@@ -43,7 +43,7 @@ export const obtenerPlaneacionPorId = async (req, res) => {
   }
 };
 
-// Actualizar planeación por ID pal commit que me caga no se suba alv
+// Actualizar planeación por ID me disculpo por todos los commits sacrificados
 export const actualizarPlaneacion = async (req, res) => {
   try {
     const actualizada = await Planeacion.findByIdAndUpdate(
