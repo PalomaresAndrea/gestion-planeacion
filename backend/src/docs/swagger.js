@@ -8,7 +8,7 @@ const options = {
       title: 'API - Gestión de Planeación Académica',
       version: '1.0.0',
       description:
-        'Documentación de la API para el sistema de gestión de planeación didáctica, avances y evidencias docentes.',
+        'Documentación de la API para el sistema de gestión de planeación didáctica, avances, evidencias docentes y reportes institucionales.',
       contact: {
         name: 'Equipo de Desarrollo',
         email: 'soporte@planeacion.edu.mx',
@@ -265,6 +265,194 @@ const options = {
             }
           }
         },
+        // NUEVOS SCHEMAS PARA REPORTES
+        ReporteInstitucional: {
+          type: 'object',
+          properties: {
+            periodo: {
+              type: 'string',
+              description: 'Periodo del reporte',
+              example: '2024-2025'
+            },
+            fechaGeneracion: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Fecha de generación del reporte',
+              example: '2024-03-20T10:30:00.000Z'
+            },
+            resumenGeneral: {
+              type: 'object',
+              properties: {
+                totalProfesores: {
+                  type: 'number',
+                  description: 'Total de profesores únicos en el sistema',
+                  example: 15
+                },
+                totalPlaneaciones: {
+                  type: 'number',
+                  description: 'Total de planeaciones registradas',
+                  example: 45
+                },
+                totalAvances: {
+                  type: 'number',
+                  description: 'Total de avances registrados',
+                  example: 60
+                },
+                totalEvidencias: {
+                  type: 'number',
+                  description: 'Total de evidencias registradas',
+                  example: 25
+                }
+              }
+            },
+            planeaciones: {
+              type: 'object',
+              properties: {
+                total: { type: 'number', example: 45 },
+                aprobadas: { type: 'number', example: 35 },
+                pendientes: { type: 'number', example: 8 },
+                rechazadas: { type: 'number', example: 2 },
+                ajustesSolicitados: { type: 'number', example: 0 },
+                porcentajeAprobacion: { type: 'number', example: 77.78 }
+              }
+            },
+            avances: {
+              type: 'object',
+              properties: {
+                total: { type: 'number', example: 60 },
+                cumplido: { type: 'number', example: 35 },
+                parcial: { type: 'number', example: 20 },
+                noCumplido: { type: 'number', example: 5 },
+                porcentajeCumplimiento: { type: 'number', example: 58.33 },
+                porcentajePromedio: { type: 'number', example: 72.5 }
+              }
+            },
+            capacitacionDocente: {
+              type: 'object',
+              properties: {
+                totalCursos: { type: 'number', example: 25 },
+                cursosValidadas: { type: 'number', example: 18 },
+                cursosPendientes: { type: 'number', example: 5 },
+                cursosRechazadas: { type: 'number', example: 2 },
+                totalHorasAcreditadas: { type: 'number', example: 420 },
+                promedioHorasPorProfesor: { type: 'number', example: 28.0 },
+                distribucionPorTipo: {
+                  type: 'object',
+                  additionalProperties: { type: 'number' },
+                  example: { 'curso': 10, 'taller': 8, 'diplomado': 5, 'seminario': 2 }
+                }
+              }
+            },
+            porParcial: {
+              type: 'object',
+              properties: {
+                1: {
+                  type: 'object',
+                  properties: {
+                    planeaciones: { type: 'number', example: 15 },
+                    avances: { type: 'number', example: 20 }
+                  }
+                },
+                2: {
+                  type: 'object',
+                  properties: {
+                    planeaciones: { type: 'number', example: 15 },
+                    avances: { type: 'number', example: 20 }
+                  }
+                },
+                3: {
+                  type: 'object',
+                  properties: {
+                    planeaciones: { type: 'number', example: 15 },
+                    avances: { type: 'number', example: 20 }
+                  }
+                }
+              }
+            }
+          }
+        },
+        ReporteProfesor: {
+          type: 'object',
+          properties: {
+            profesor: {
+              type: 'string',
+              description: 'Nombre del profesor',
+              example: 'Juan Pérez'
+            },
+            periodo: {
+              type: 'string',
+              description: 'Periodo del reporte',
+              example: '2024-2025'
+            },
+            fechaGeneracion: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Fecha de generación del reporte',
+              example: '2024-03-20T10:30:00.000Z'
+            },
+            resumen: {
+              type: 'object',
+              properties: {
+                planeacionesRegistradas: { type: 'number', example: 5 },
+                avancesRegistrados: { type: 'number', example: 8 },
+                cursosTomados: { type: 'number', example: 3 }
+              }
+            },
+            detallePlaneaciones: {
+              type: 'object',
+              properties: {
+                porEstado: {
+                  type: 'object',
+                  additionalProperties: { type: 'number' },
+                  example: { 'aprobado': 3, 'pendiente': 2 }
+                },
+                porMateria: {
+                  type: 'object',
+                  additionalProperties: { type: 'object' },
+                  example: {
+                    'Matemáticas': { 'aprobado': 2, 'pendiente': 1 },
+                    'Física': { 'aprobado': 1, 'pendiente': 1 }
+                  }
+                }
+              }
+            },
+            detalleAvances: {
+              type: 'object',
+              properties: {
+                porCumplimiento: {
+                  type: 'object',
+                  additionalProperties: { type: 'number' },
+                  example: { 'cumplido': 5, 'parcial': 2, 'no cumplido': 1 }
+                },
+                porcentajePromedio: { type: 'number', example: 78.5 },
+                porMateria: {
+                  type: 'object',
+                  additionalProperties: { type: 'object' },
+                  example: {
+                    'Matemáticas': { 'cumplido': 3, 'parcial': 1 },
+                    'Física': { 'cumplido': 2, 'parcial': 1, 'no cumplido': 1 }
+                  }
+                }
+              }
+            },
+            detalleCapacitacion: {
+              type: 'object',
+              properties: {
+                totalHoras: { type: 'number', example: 80 },
+                porTipo: {
+                  type: 'object',
+                  additionalProperties: { type: 'number' },
+                  example: { 'curso': 2, 'taller': 1 }
+                },
+                porInstitucion: {
+                  type: 'object',
+                  additionalProperties: { type: 'number' },
+                  example: { 'Universidad Nacional': 2, 'Instituto Tecnológico': 1 }
+                }
+              }
+            }
+          }
+        },
         EstadisticasAvance: {
           type: 'object',
           properties: {
@@ -338,51 +526,6 @@ const options = {
             porInstitucion: {
               type: 'object',
               description: 'Evidencias agrupadas por institución'
-            }
-          }
-        },
-        ReporteGeneral: {
-          type: 'object',
-          properties: {
-            totalAvances: {
-              type: 'number',
-              description: 'Total de avances en el sistema',
-              example: 45
-            },
-            totalEvidencias: {
-              type: 'number',
-              description: 'Total de evidencias en el sistema',
-              example: 25
-            },
-            cumplimientoGeneral: {
-              type: 'object',
-              properties: {
-                cumplido: { type: 'number', example: 25 },
-                parcial: { type: 'number', example: 15 },
-                noCumplido: { type: 'number', example: 5 }
-              }
-            },
-            estadoEvidencias: {
-              type: 'object',
-              properties: {
-                validadas: { type: 'number', example: 18 },
-                pendientes: { type: 'number', example: 5 },
-                rechazadas: { type: 'number', example: 2 }
-              }
-            },
-            porProfesor: {
-              type: 'object',
-              description: 'Estadísticas por profesor'
-            },
-            totalHorasCapacitacion: {
-              type: 'number',
-              description: 'Total de horas de capacitación acreditadas',
-              example: 850
-            },
-            promedioGlobal: {
-              type: 'number',
-              description: 'Porcentaje promedio global de avance',
-              example: 78.3
             }
           }
         },
@@ -499,6 +642,10 @@ const options = {
       {
         name: 'Evidencias',
         description: 'Endpoints para gestión de evidencias de capacitación docente'
+      },
+      {
+        name: 'Reportes',
+        description: 'Endpoints para reportes institucionales y exportación'
       }
     ]
   },

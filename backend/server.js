@@ -9,7 +9,7 @@ import planeacionRoutes from './src/routes/planeacionRoutes.js';
 import avanceRoutes from './src/routes/avanceRoutes.js';
 import evidenciaRoutes from './src/routes/evidenciaRoutes.js';
 import geolocalizacionRoutes from './src/routes/geolocalizacionRoutes.js';
-
+import reporteRoutes from './src/routes/reporteRoutes.js';
 
 dotenv.config();
 const app = express();
@@ -30,6 +30,7 @@ app.use('/api/planeaciones', planeacionRoutes);
 app.use('/api/avances', avanceRoutes);
 app.use('/api/evidencias', evidenciaRoutes);
 app.use("/api/geolocalizacion", geolocalizacionRoutes);
+app.use('/api/reportes', reporteRoutes);
 
 //  Ruta de prueba
 app.get('/', (req, res) => {
