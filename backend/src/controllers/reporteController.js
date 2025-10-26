@@ -99,7 +99,7 @@ export const obtenerReporteInstitucional = async (req, res) => {
   }
 };
 
-// 📈 Reporte de cumplimiento por profesor
+//  Reporte de cumplimiento por profesor
 export const obtenerReportePorProfesor = async (req, res) => {
   try {
     const { profesor, ciclo } = req.query;
