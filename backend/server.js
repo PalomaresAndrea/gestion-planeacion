@@ -8,6 +8,8 @@ import swaggerSpec from './src/docs/swagger.js';
 import planeacionRoutes from './src/routes/planeacionRoutes.js';
 import avanceRoutes from './src/routes/avanceRoutes.js';
 import evidenciaRoutes from './src/routes/evidenciaRoutes.js';
+import geolocalizacionRoutes from './src/routes/geolocalizacionRoutes.js';
+
 
 dotenv.config();
 const app = express();
@@ -27,6 +29,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
 app.use('/api/planeaciones', planeacionRoutes);
 app.use('/api/avances', avanceRoutes);
 app.use('/api/evidencias', evidenciaRoutes);
+app.use("/api/geolocalizacion", geolocalizacionRoutes);
 
 //  Ruta de prueba
 app.get('/', (req, res) => {
