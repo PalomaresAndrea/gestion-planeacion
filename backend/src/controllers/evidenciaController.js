@@ -1,6 +1,7 @@
 import Evidencia from '../models/Evidencia.js';
+import notificacionService from '../services/notificacionService.js';
 
-//  Crear evidencia
+// Crear evidencia
 export const crearEvidencia = async (req, res) => {
   try {
     const nueva = new Evidencia(req.body);
@@ -11,7 +12,7 @@ export const crearEvidencia = async (req, res) => {
   }
 };
 
-//  Obtener todas las evidencias (con filtros)
+// Obtener todas las evidencias (con filtros)
 export const obtenerEvidencias = async (req, res) => {
   try {
     const { profesor, estado, tipo, ciclo, institucion } = req.query;
@@ -30,7 +31,7 @@ export const obtenerEvidencias = async (req, res) => {
   }
 };
 
-//  Obtener evidencia por ID
+// Obtener evidencia por ID
 export const obtenerEvidenciaPorId = async (req, res) => {
   try {
     const evidencia = await Evidencia.findById(req.params.id);
@@ -43,7 +44,7 @@ export const obtenerEvidenciaPorId = async (req, res) => {
   }
 };
 
-//  Actualizar evidencia
+// Actualizar evidencia
 export const actualizarEvidencia = async (req, res) => {
   try {
     const actualizada = await Evidencia.findByIdAndUpdate(
@@ -57,7 +58,7 @@ export const actualizarEvidencia = async (req, res) => {
   }
 };
 
-//  Eliminar evidencia
+// Eliminar evidencia
 export const eliminarEvidencia = async (req, res) => {
   try {
     await Evidencia.findByIdAndDelete(req.params.id);
@@ -67,7 +68,7 @@ export const eliminarEvidencia = async (req, res) => {
   }
 };
 
-//  Validar/Rechazar evidencia (para coordinadores)
+// Validar/Rechazar evidencia (para coordinadores) - CON NOTIFICACIÓN
 export const validarEvidencia = async (req, res) => {
   try {
     const { estado, observaciones, coordinadorValidador } = req.body;
@@ -87,13 +88,26 @@ export const validarEvidencia = async (req, res) => {
       { new: true }
     );
 
+    // 📧 ENVIAR NOTIFICACIÓN POR EMAIL
+    try {
+      await notificacionService.notificarValidacionEvidencia(
+        actualizada,
+        estado,
+        observaciones
+      );
+      console.log(`📧 Notificación de evidencia ${estado} enviada`);
+    } catch (emailError) {
+      console.error('Error enviando notificación de evidencia:', emailError);
+      // No fallar la operación principal si falla el email
+    }
+
     res.json(actualizada);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-//  Obtener estadísticas de evidencias por profesor
+// Obtener estadísticas de evidencias por profesor
 export const obtenerEstadisticasProfesor = async (req, res) => {
   try {
     const { profesor, ciclo } = req.query;
@@ -139,7 +153,7 @@ export const obtenerEstadisticasProfesor = async (req, res) => {
   }
 };
 
-//  Reporte general de evidencias
+// Reporte general de evidencias
 export const obtenerReporteGeneral = async (req, res) => {
   try {
     const { ciclo } = req.query;
@@ -198,7 +212,7 @@ export const obtenerReporteGeneral = async (req, res) => {
   }
 };
 
-//  Buscar evidencias por nombre de curso o institución
+// Buscar evidencias por nombre de curso o institución
 export const buscarEvidencias = async (req, res) => {
   try {
     const { q } = req.query;

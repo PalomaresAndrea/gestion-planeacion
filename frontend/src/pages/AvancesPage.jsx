@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react'
-import { avanceService } from '../services/api'
+import { avanceService, notificacionService } from '../services/api'
+import '../styles/AvancesStyles.css'
 
 const AvancesPage = () => {
   const [avances, setAvances] = useState([])
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState({})
-  const [showForm, setShowForm] = useState(false)
+  const [showFormModal, setShowFormModal] = useState(false)
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const [showErrorModal, setShowErrorModal] = useState(false)
+  const [showRecordatorioModal, setShowRecordatorioModal] = useState(false)
+  const [modalMessage, setModalMessage] = useState('')
   const [formData, setFormData] = useState({
     profesor: '',
     materia: '',
@@ -16,6 +21,8 @@ const AvancesPage = () => {
     dificultades: '',
     observaciones: ''
   })
+  const [recordatorioEnviado, setRecordatorioEnviado] = useState(false)
+  const [enviandoRecordatorios, setEnviandoRecordatorios] = useState(false)
 
   useEffect(() => {
     loadAvances()
@@ -35,7 +42,6 @@ const AvancesPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
-      // CORRECCIÓN: Solo enviar los datos básicos, el backend calculará el resto
       const dataToSend = {
         profesor: formData.profesor,
         materia: formData.materia,
@@ -45,24 +51,39 @@ const AvancesPage = () => {
         actividadesRealizadas: formData.actividadesRealizadas.filter(act => act.trim() !== ''),
         dificultades: formData.dificultades,
         observaciones: formData.observaciones
-        // NO enviar 'cumplimiento' - el backend lo calculará automáticamente
-        // NO enviar 'porcentajeAvance' - el backend lo calculará automáticamente
       }
       
       console.log('Enviando datos al backend:', dataToSend)
       
       await avanceService.create(dataToSend)
-      setShowForm(false)
-      setFormData({
-        profesor: '', materia: '', parcial: 1,
-        temasPlaneados: [''], temasCubiertos: [''],
-        actividadesRealizadas: [''], dificultades: '', observaciones: ''
-      })
+      setShowFormModal(false)
+      resetForm()
       loadAvances()
-      alert('Avance registrado exitosamente')
+      setModalMessage('Avance registrado exitosamente')
+      setShowSuccessModal(true)
     } catch (error) {
       console.error('Error completo:', error)
-      alert('Error al registrar avance: ' + (error.response?.data?.message || error.message))
+      setModalMessage('Error al registrar avance: ' + (error.response?.data?.message || error.message))
+      setShowErrorModal(true)
+    }
+  }
+
+  const enviarRecordatorios = async () => {
+    try {
+      setEnviandoRecordatorios(true)
+      const response = await notificacionService.enviarRecordatorios()
+      setModalMessage(`✅ ${response.data.message}`)
+      setShowRecordatorioModal(true)
+      setRecordatorioEnviado(true)
+      
+      setTimeout(() => {
+        setRecordatorioEnviado(false)
+        setEnviandoRecordatorios(false)
+      }, 5000)
+    } catch (error) {
+      setModalMessage('❌ Error enviando recordatorios: ' + error.message)
+      setShowErrorModal(true)
+      setEnviandoRecordatorios(false)
     }
   }
 
@@ -87,57 +108,101 @@ const AvancesPage = () => {
     }))
   }
 
+  const resetForm = () => {
+    setFormData({
+      profesor: '', materia: '', parcial: 1,
+      temasPlaneados: [''], temasCubiertos: [''],
+      actividadesRealizadas: [''], dificultades: '', observaciones: ''
+    })
+  }
+
   const getCumplimientoColor = (cumplimiento) => {
     const colors = {
-      cumplido: { bg: '#d4edda', color: '#155724' },
-      parcial: { bg: '#fff3cd', color: '#856404' },
-      no_cumplido: { bg: '#f8d7da', color: '#721c24' }
+      cumplido: { bg: '#e8f8ec', color: '#1e7e34' },
+      parcial: { bg: '#fff8e1', color: '#a68b00' },
+      no_cumplido: { bg: '#fdecea', color: '#a71d2a' }
     }
     return colors[cumplimiento] || colors.parcial
   }
 
-  if (loading) {
-    return <div>Cargando avances...</div>
-  }
+  const avancesPendientes = avances.filter(a => 
+    a.cumplimiento === 'parcial' || a.cumplimiento === 'no cumplido'
+  ).length
+
+  const profesoresConPendientes = [...new Set(
+    avances
+      .filter(a => a.cumplimiento === 'parcial' || a.cumplimiento === 'no cumplido')
+      .map(a => a.profesor)
+  )]
+
+  if (loading) return <div className="loading">Cargando avances...</div>
 
   return (
-    <div>
-      <header style={{ marginBottom: '30px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <h1 style={{ margin: '0 0 10px 0', color: '#2c3e50' }}>Control de Avances</h1>
-            <p style={{ margin: 0, color: '#7f8c8d' }}>Seguimiento del avance por parcial</p>
-          </div>
+    <div className="avances-container">
+      <header className="avances-header">
+        <div className="header-content">
+          <h1> Control de Avances</h1>
+          <p>Seguimiento del avance por parcial</p>
+        </div>
+        
+        <div className="header-actions">
+          {avancesPendientes > 0 && (
+            <button
+              onClick={enviarRecordatorios}
+              disabled={recordatorioEnviado || enviandoRecordatorios}
+              className={`btn-recordatorio ${
+                recordatorioEnviado ? 'enviado' : enviandoRecordatorios ? 'enviando' : ''
+              }`}
+            >
+              {enviandoRecordatorios ? (
+                <>⏳ Enviando...</>
+              ) : recordatorioEnviado ? (
+                <>✅ Enviado</>
+              ) : (
+                <>
+                  ⏰ Recordatorios
+                  <span className="badge">{avancesPendientes}</span>
+                </>
+              )}
+            </button>
+          )}
+          
           <button
-            onClick={() => setShowForm(true)}
-            style={{
-              background: '#3498db',
-              color: 'white',
-              border: 'none',
-              padding: '10px 20px',
-              borderRadius: '5px',
-              cursor: 'pointer'
-            }}
+            onClick={() => setShowFormModal(true)}
+            className="btn-primary"
           >
             + Registrar Avance
           </button>
         </div>
       </header>
 
+      {recordatorioEnviado && (
+        <div className="alert-success">
+          <span>✅</span>
+          <div>
+            <strong>Recordatorios enviados exitosamente</strong>
+            <div>Se notificó a {profesoresConPendientes.length} profesor(es) con avances pendientes</div>
+          </div>
+        </div>
+      )}
+
+      {avancesPendientes > 0 && !recordatorioEnviado && (
+        <div className="alert-warning">
+          <span>⏰</span>
+          <div>
+            <strong>{avancesPendientes} avance(s) pendiente(s)</strong>
+            <div>{profesoresConPendientes.length} profesor(es) requieren seguimiento</div>
+          </div>
+        </div>
+      )}
+
       {/* Filtros */}
-      <div style={{
-        background: 'white',
-        padding: '20px',
-        borderRadius: '8px',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-        marginBottom: '20px'
-      }}>
+      <div className="filters-card">
         <h3>Filtros</h3>
-        <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
+        <div className="filters-grid">
           <select 
             value={filters.cumplimiento || ''}
             onChange={(e) => setFilters(prev => ({ ...prev, cumplimiento: e.target.value }))}
-            style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
           >
             <option value="">Todos los estados</option>
             <option value="cumplido">Cumplido</option>
@@ -148,7 +213,6 @@ const AvancesPage = () => {
           <select 
             value={filters.parcial || ''}
             onChange={(e) => setFilters(prev => ({ ...prev, parcial: e.target.value }))}
-            style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
           >
             <option value="">Todos los parciales</option>
             <option value="1">Parcial 1</option>
@@ -161,420 +225,353 @@ const AvancesPage = () => {
             placeholder="Filtrar por profesor..."
             value={filters.profesor || ''}
             onChange={(e) => setFilters(prev => ({ ...prev, profesor: e.target.value }))}
-            style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
           />
 
           <button
             onClick={() => setFilters({})}
-            style={{
-              background: '#95a5a6',
-              color: 'white',
-              border: 'none',
-              padding: '8px 15px',
-              borderRadius: '4px',
-              cursor: 'pointer'
-            }}
+            className="btn-secondary"
           >
             Limpiar Filtros
           </button>
         </div>
       </div>
 
-      {/* Formulario de nuevo avance */}
-      {showForm && (
-        <div style={{
-          background: 'white',
-          padding: '20px',
-          borderRadius: '8px',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-          marginBottom: '20px'
-        }}>
-          <h3>Registrar Nuevo Avance</h3>
-          <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '15px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-              <input
-                type="text"
-                placeholder="Profesor"
-                value={formData.profesor}
-                onChange={(e) => setFormData(prev => ({ ...prev, profesor: e.target.value }))}
+      {/* Modal de Formulario */}
+      {showFormModal && (
+        <div className="modal-overlay">
+          <div className="modal-container">
+            <div className="modal-header">
+              <h3>Registrar Nuevo Avance</h3>
+              <button 
+                onClick={() => {
+                  setShowFormModal(false)
+                  resetForm()
+                }}
+                className="close-btn"
+              >
+                ×
+              </button>
+            </div>
+            <form onSubmit={handleSubmit} className="avance-form">
+              <div className="form-row">
+                <input
+                  type="text"
+                  placeholder="Profesor"
+                  value={formData.profesor}
+                  onChange={(e) => setFormData(prev => ({ ...prev, profesor: e.target.value }))}
+                  required
+                />
+                <input
+                  type="text"
+                  placeholder="Materia"
+                  value={formData.materia}
+                  onChange={(e) => setFormData(prev => ({ ...prev, materia: e.target.value }))}
+                  required
+                />
+              </div>
+
+              <select
+                value={formData.parcial}
+                onChange={(e) => setFormData(prev => ({ ...prev, parcial: parseInt(e.target.value) }))}
                 required
-                style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
+              >
+                <option value="1">Parcial 1</option>
+                <option value="2">Parcial 2</option>
+                <option value="3">Parcial 3</option>
+              </select>
+
+              {/* Temas Planeados */}
+              <div className="form-section">
+                <label>Temas Planeados *</label>
+                {formData.temasPlaneados.map((tema, index) => (
+                  <div key={index} className="input-group">
+                    <input
+                      type="text"
+                      placeholder={`Tema planeado ${index + 1}`}
+                      value={tema}
+                      onChange={(e) => updateTema('temasPlaneados', index, e.target.value)}
+                    />
+                    {formData.temasPlaneados.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeTema('temasPlaneados', index)}
+                        className="btn-remove"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => addTema('temasPlaneados')}
+                  className="btn-add"
+                >
+                  + Agregar Tema
+                </button>
+              </div>
+
+              {/* Temas Cubiertos */}
+              <div className="form-section">
+                <label>Temas Cubiertos</label>
+                {formData.temasCubiertos.map((tema, index) => (
+                  <div key={index} className="input-group">
+                    <input
+                      type="text"
+                      placeholder={`Tema cubierto ${index + 1}`}
+                      value={tema}
+                      onChange={(e) => updateTema('temasCubiertos', index, e.target.value)}
+                    />
+                    {formData.temasCubiertos.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeTema('temasCubiertos', index)}
+                        className="btn-remove"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => addTema('temasCubiertos')}
+                  className="btn-add"
+                >
+                  + Agregar Tema
+                </button>
+              </div>
+
+              {/* Actividades Realizadas */}
+              <div className="form-section">
+                <label>Actividades Realizadas</label>
+                {formData.actividadesRealizadas.map((actividad, index) => (
+                  <div key={index} className="input-group">
+                    <input
+                      type="text"
+                      placeholder={`Actividad ${index + 1}`}
+                      value={actividad}
+                      onChange={(e) => updateTema('actividadesRealizadas', index, e.target.value)}
+                    />
+                    {formData.actividadesRealizadas.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeTema('actividadesRealizadas', index)}
+                        className="btn-remove"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => addTema('actividadesRealizadas')}
+                  className="btn-add"
+                >
+                  + Agregar Actividad
+                </button>
+              </div>
+
+              <textarea
+                placeholder="Dificultades encontradas (opcional)"
+                value={formData.dificultades}
+                onChange={(e) => setFormData(prev => ({ ...prev, dificultades: e.target.value }))}
+                rows="3"
               />
-              <input
-                type="text"
-                placeholder="Materia"
-                value={formData.materia}
-                onChange={(e) => setFormData(prev => ({ ...prev, materia: e.target.value }))}
-                required
-                style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
+
+              <textarea
+                placeholder="Observaciones adicionales (opcional)"
+                value={formData.observaciones}
+                onChange={(e) => setFormData(prev => ({ ...prev, observaciones: e.target.value }))}
+                rows="3"
               />
-            </div>
 
-            <select
-              value={formData.parcial}
-              onChange={(e) => setFormData(prev => ({ ...prev, parcial: parseInt(e.target.value) }))}
-              required
-              style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
-            >
-              <option value="1">Parcial 1</option>
-              <option value="2">Parcial 2</option>
-              <option value="3">Parcial 3</option>
-            </select>
-
-            {/* Temas Planeados */}
-            <div>
-              <label style={{ display: 'block', marginBottom: '10px', fontWeight: 'bold' }}>
-                Temas Planeados *
-              </label>
-              {formData.temasPlaneados.map((tema, index) => (
-                <div key={index} style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-                  <input
-                    type="text"
-                    placeholder={`Tema planeado ${index + 1}`}
-                    value={tema}
-                    onChange={(e) => updateTema('temasPlaneados', index, e.target.value)}
-                    style={{ 
-                      flex: 1, 
-                      padding: '8px', 
-                      borderRadius: '4px', 
-                      border: '1px solid #ddd' 
-                    }}
-                  />
-                  {formData.temasPlaneados.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeTema('temasPlaneados', index)}
-                      style={{
-                        background: '#e74c3c',
-                        color: 'white',
-                        border: 'none',
-                        padding: '8px 12px',
-                        borderRadius: '4px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={() => addTema('temasPlaneados')}
-                style={{
-                  background: '#27ae60',
-                  color: 'white',
-                  border: 'none',
-                  padding: '8px 15px',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-              >
-                + Agregar Tema
-              </button>
-            </div>
-
-            {/* Temas Cubiertos */}
-            <div>
-              <label style={{ display: 'block', marginBottom: '10px', fontWeight: 'bold' }}>
-                Temas Cubiertos
-              </label>
-              {formData.temasCubiertos.map((tema, index) => (
-                <div key={index} style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-                  <input
-                    type="text"
-                    placeholder={`Tema cubierto ${index + 1}`}
-                    value={tema}
-                    onChange={(e) => updateTema('temasCubiertos', index, e.target.value)}
-                    style={{ 
-                      flex: 1, 
-                      padding: '8px', 
-                      borderRadius: '4px', 
-                      border: '1px solid #ddd' 
-                    }}
-                  />
-                  {formData.temasCubiertos.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeTema('temasCubiertos', index)}
-                      style={{
-                        background: '#e74c3c',
-                        color: 'white',
-                        border: 'none',
-                        padding: '8px 12px',
-                        borderRadius: '4px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={() => addTema('temasCubiertos')}
-                style={{
-                  background: '#27ae60',
-                  color: 'white',
-                  border: 'none',
-                  padding: '8px 15px',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-              >
-                + Agregar Tema
-              </button>
-            </div>
-
-            {/* Actividades Realizadas */}
-            <div>
-              <label style={{ display: 'block', marginBottom: '10px', fontWeight: 'bold' }}>
-                Actividades Realizadas
-              </label>
-              {formData.actividadesRealizadas.map((actividad, index) => (
-                <div key={index} style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-                  <input
-                    type="text"
-                    placeholder={`Actividad ${index + 1}`}
-                    value={actividad}
-                    onChange={(e) => updateTema('actividadesRealizadas', index, e.target.value)}
-                    style={{ 
-                      flex: 1, 
-                      padding: '8px', 
-                      borderRadius: '4px', 
-                      border: '1px solid #ddd' 
-                    }}
-                  />
-                  {formData.actividadesRealizadas.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeTema('actividadesRealizadas', index)}
-                      style={{
-                        background: '#e74c3c',
-                        color: 'white',
-                        border: 'none',
-                        padding: '8px 12px',
-                        borderRadius: '4px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={() => addTema('actividadesRealizadas')}
-                style={{
-                  background: '#27ae60',
-                  color: 'white',
-                  border: 'none',
-                  padding: '8px 15px',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-              >
-                + Agregar Actividad
-              </button>
-            </div>
-
-            <textarea
-              placeholder="Dificultades encontradas (opcional)"
-              value={formData.dificultades}
-              onChange={(e) => setFormData(prev => ({ ...prev, dificultades: e.target.value }))}
-              style={{ 
-                padding: '8px', 
-                borderRadius: '4px', 
-                border: '1px solid #ddd',
-                minHeight: '60px',
-                resize: 'vertical'
-              }}
-            />
-
-            <textarea
-              placeholder="Observaciones adicionales (opcional)"
-              value={formData.observaciones}
-              onChange={(e) => setFormData(prev => ({ ...prev, observaciones: e.target.value }))}
-              style={{ 
-                padding: '8px', 
-                borderRadius: '4px', 
-                border: '1px solid #ddd',
-                minHeight: '60px',
-                resize: 'vertical'
-              }}
-            />
-
-            <div style={{ 
-              background: '#f8f9fa', 
-              padding: '15px', 
-              borderRadius: '4px',
-              borderLeft: '4px solid #3498db'
-            }}>
-              <p style={{ margin: 0, fontSize: '0.9rem', color: '#2c3e50' }}>
+              <div className="form-note">
                 <strong>Nota:</strong> El porcentaje de avance y cumplimiento se calcularán automáticamente 
                 en base a los temas planeados vs temas cubiertos.
-              </p>
-            </div>
+              </div>
 
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                onClick={() => setShowForm(false)}
-                style={{
-                  background: '#95a5a6',
-                  color: 'white',
-                  border: 'none',
-                  padding: '10px 20px',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                style={{
-                  background: '#27ae60',
-                  color: 'white',
-                  border: 'none',
-                  padding: '10px 20px',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-              >
-                Registrar Avance
-              </button>
-            </div>
-          </form>
+              <div className="form-actions">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowFormModal(false)
+                    resetForm()
+                  }}
+                  className="btn-secondary"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                >
+                  Registrar Avance
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Éxito */}
+      {showSuccessModal && (
+        <div className="modal-overlay">
+          <div className="modal-container success-modal">
+            <div className="modal-icon">✅</div>
+            <h3>¡Éxito!</h3>
+            <p>{modalMessage}</p>
+            <button
+              onClick={() => setShowSuccessModal(false)}
+              className="btn-primary"
+            >
+              Aceptar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Error */}
+      {showErrorModal && (
+        <div className="modal-overlay">
+          <div className="modal-container error-modal">
+            <div className="modal-icon">❌</div>
+            <h3>Error</h3>
+            <p>{modalMessage}</p>
+            <button
+              onClick={() => setShowErrorModal(false)}
+              className="btn-primary"
+            >
+              Aceptar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Recordatorio */}
+      {showRecordatorioModal && (
+        <div className="modal-overlay">
+          <div className="modal-container success-modal">
+            <div className="modal-icon">⏰</div>
+            <h3>Recordatorios Enviados</h3>
+            <p>{modalMessage}</p>
+            <button
+              onClick={() => setShowRecordatorioModal(false)}
+              className="btn-primary"
+            >
+              Aceptar
+            </button>
+          </div>
         </div>
       )}
 
       {/* Lista de avances */}
-      <div style={{
-        background: 'white',
-        padding: '20px',
-        borderRadius: '8px',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-      }}>
-        <h2 style={{ margin: '0 0 20px 0', color: '#2c3e50' }}>
-          Avances Registrados ({avances.length})
-        </h2>
+      <div className="avances-list-container">
+        <div className="list-header">
+          <h2>Avances Registrados ({avances.length})</h2>
+          
+          {avances.length > 0 && (
+            <div className="stats-summary">
+              <span className="stat-cumplido">
+                ✅ {avances.filter(a => a.cumplimiento === 'cumplido').length} cumplidos
+              </span>
+              <span className="stat-parcial">
+                ⚠️ {avances.filter(a => a.cumplimiento === 'parcial').length} parciales
+              </span>
+              <span className="stat-no-cumplido">
+                ❌ {avances.filter(a => a.cumplimiento === 'no cumplido').length} no cumplidos
+              </span>
+            </div>
+          )}
+        </div>
         
         {avances.length === 0 ? (
-          <div style={{ 
-            textAlign: 'center', 
-            padding: '40px', 
-            color: '#95a5a6',
-            border: '2px dashed #bdc3c7',
-            borderRadius: '8px'
-          }}>
-            <div style={{ fontSize: '3rem', marginBottom: '10px' }}>📈</div>
+          <div className="empty-state">
+            <div className="empty-icon">📈</div>
             <p>No hay avances registrados</p>
             <button
-              onClick={() => setShowForm(true)}
-              style={{
-                background: '#3498db',
-                color: 'white',
-                border: 'none',
-                padding: '10px 20px',
-                borderRadius: '5px',
-                cursor: 'pointer',
-                marginTop: '10px'
-              }}
+              onClick={() => setShowFormModal(true)}
+              className="btn-primary"
             >
               Registrar primer avance
             </button>
           </div>
         ) : (
-          <div style={{ display: 'grid', gap: '15px' }}>
+          <div className="avances-grid">
             {avances.map((avance) => {
               const cumplimientoColor = getCumplimientoColor(avance.cumplimiento)
+              const necesitaAtencion = avance.cumplimiento === 'parcial' || avance.cumplimiento === 'no cumplido'
+              
               return (
-                <div key={avance._id} style={{
-                  padding: '20px',
-                  border: '1px solid #e1e8ed',
-                  borderRadius: '8px',
-                  background: '#fafbfc'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
-                    <div style={{ flex: 1 }}>
-                      <h3 style={{ margin: '0 0 10px 0', color: '#2c3e50' }}>
-                        {avance.materia} - Parcial {avance.parcial}
-                      </h3>
-                      <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginBottom: '10px' }}>
-                        <div>
-                          <strong>Profesor:</strong> {avance.profesor}
-                        </div>
-                        <div>
-                          <strong>Ciclo:</strong> {avance.cicloEscolar}
-                        </div>
-                        <div>
-                          <strong>Avance:</strong> {avance.porcentajeAvance}%
-                        </div>
+                <div key={avance._id} className={`avance-card ${necesitaAtencion ? 'necesita-atencion' : ''}`}>
+                  <div className="card-header">
+                    <div className="card-title">
+                      <h3>{avance.materia} - Parcial {avance.parcial}</h3>
+                      <div className="card-meta">
+                        <div><strong>Profesor:</strong> {avance.profesor}</div>
+                        <div><strong>Ciclo:</strong> {avance.cicloEscolar}</div>
+                        <div><strong>Avance:</strong> {avance.porcentajeAvance}%</div>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                      <span style={{
-                        padding: '4px 12px',
-                        borderRadius: '20px',
-                        fontSize: '0.8rem',
-                        fontWeight: 'bold',
-                        background: cumplimientoColor.bg,
-                        color: cumplimientoColor.color
-                      }}>
+                    <div className="card-badges">
+                      {necesitaAtencion && (
+                        <span className="badge-pendiente">⏰ Pendiente</span>
+                      )}
+                      <span 
+                        className="estado-cumplimiento"
+                        style={{
+                          background: cumplimientoColor.bg,
+                          color: cumplimientoColor.color
+                        }}
+                      >
                         {avance.cumplimiento.toUpperCase()}
                       </span>
                     </div>
                   </div>
 
-                  {/* Temas y actividades */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '15px' }}>
-                    <div>
-                      <strong>Temas Planeados:</strong>
-                      <ul style={{ margin: '5px 0', paddingLeft: '20px' }}>
-                        {avance.temasPlaneados.map((tema, index) => (
-                          <li key={index}>{tema}</li>
-                        ))}
-                      </ul>
+                  <div className="card-content">
+                    <div className="temas-grid">
+                      <div className="temas-col">
+                        <strong>Temas Planeados:</strong>
+                        <ul>
+                          {avance.temasPlaneados.map((tema, index) => (
+                            <li key={index}>{tema}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div className="temas-col">
+                        <strong>Temas Cubiertos:</strong>
+                        <ul>
+                          {avance.temasCubiertos.map((tema, index) => (
+                            <li key={index}>{tema}</li>
+                          ))}
+                        </ul>
+                      </div>
                     </div>
-                    <div>
-                      <strong>Temas Cubiertos:</strong>
-                      <ul style={{ margin: '5px 0', paddingLeft: '20px' }}>
-                        {avance.temasCubiertos.map((tema, index) => (
-                          <li key={index}>{tema}</li>
-                        ))}
-                      </ul>
-                    </div>
+
+                    {avance.actividadesRealizadas && avance.actividadesRealizadas.length > 0 && (
+                      <div className="actividades-section">
+                        <strong>Actividades Realizadas:</strong>
+                        <ul>
+                          {avance.actividadesRealizadas.map((actividad, index) => (
+                            <li key={index}>{actividad}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {(avance.dificultades || avance.observaciones) && (
+                      <div className="observaciones-section">
+                        {avance.dificultades && (
+                          <div><strong>Dificultades:</strong> {avance.dificultades}</div>
+                        )}
+                        {avance.observaciones && (
+                          <div><strong>Observaciones:</strong> {avance.observaciones}</div>
+                        )}
+                      </div>
+                    )}
                   </div>
-
-                  {avance.actividadesRealizadas && avance.actividadesRealizadas.length > 0 && (
-                    <div style={{ marginBottom: '15px' }}>
-                      <strong>Actividades Realizadas:</strong>
-                      <ul style={{ margin: '5px 0', paddingLeft: '20px' }}>
-                        {avance.actividadesRealizadas.map((actividad, index) => (
-                          <li key={index}>{actividad}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {(avance.dificultades || avance.observaciones) && (
-                    <div style={{ 
-                      background: '#f8f9fa', 
-                      padding: '10px', 
-                      borderRadius: '4px',
-                      borderLeft: '4px solid #3498db'
-                    }}>
-                      {avance.dificultades && (
-                        <div><strong>Dificultades:</strong> {avance.dificultades}</div>
-                      )}
-                      {avance.observaciones && (
-                        <div><strong>Observaciones:</strong> {avance.observaciones}</div>
-                      )}
-                    </div>
-                  )}
                 </div>
               )
             })}

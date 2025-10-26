@@ -5,6 +5,9 @@ import { connectDB } from './src/config/db.js';
 import swaggerUi from 'swagger-ui-express';
 import swaggerSpec from './src/docs/swagger.js';
 
+// Importar servicio de notificaciones
+import { initEmailService } from './src/services/notificacionService.js';
+
 import planeacionRoutes from './src/routes/planeacionRoutes.js';
 import avanceRoutes from './src/routes/avanceRoutes.js';
 import evidenciaRoutes from './src/routes/evidenciaRoutes.js';
@@ -14,7 +17,10 @@ import reporteRoutes from './src/routes/reporteRoutes.js';
 dotenv.config();
 const app = express();
 
-//  MIDDLEWARE DE LOGGING - NUEVO
+// Inicializar servicio de email
+initEmailService();
+
+// MIDDLEWARE DE LOGGING - NUEVO
 app.use((req, res, next) => {
   console.log('📨 Request:', req.method, req.url);
   if (req.method === 'POST' || req.method === 'PUT') {
@@ -27,21 +33,21 @@ app.use((req, res, next) => {
 app.use(cors());
 app.use(express.json());
 
-//  Documentación Swagger
+// Documentación Swagger
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
   explorer: true,
   customCss: '.swagger-ui .topbar { display: none }',
   customSiteTitle: "API - Gestión Planeación Académica"
 }));
 
-//  Rutas principales
+// Rutas principales
 app.use('/api/planeaciones', planeacionRoutes);
 app.use('/api/avances', avanceRoutes);
 app.use('/api/evidencias', evidenciaRoutes);
 app.use("/api/geolocalizacion", geolocalizacionRoutes);
 app.use('/api/reportes', reporteRoutes);
 
-//  Ruta de prueba
+// Ruta de prueba
 app.get('/', (req, res) => {
   res.json({ 
     message: ' Backend activo y listo con Swagger!',
@@ -51,11 +57,12 @@ app.get('/', (req, res) => {
       avances: '/api/avances',
       evidencias: '/api/evidencias',
       reportes: '/api/reportes'
-    }
+    },
+    notifications: 'Servicio de email configurado'
   });
 });
 
-//  Manejo de rutas no encontradas
+// Manejo de rutas no encontradas
 app.use((req, res) => {
   res.status(404).json({
     message: `Ruta no encontrada: ${req.method} ${req.originalUrl}`,
@@ -80,7 +87,7 @@ app.use((req, res) => {
   });
 });
 
-//  Manejo global de errores - MEJORADO
+// Manejo global de errores - MEJORADO
 app.use((error, req, res, next) => {
   console.error(' ERROR GLOBAL:');
   console.error('Mensaje:', error.message);
@@ -107,10 +114,10 @@ app.use((error, req, res, next) => {
   });
 });
 
-//  Conexión a MongoDB
+// Conexión a MongoDB
 connectDB();
 
-//  Iniciar servidor
+// Iniciar servidor
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`
@@ -118,5 +125,6 @@ app.listen(PORT, () => {
      Documentación disponible en: http://localhost:${PORT}/api-docs
      Ambiente: ${process.env.NODE_ENV || 'development'}
      Logging activado - Revisa la consola para ver las peticiones
+     Notificaciones por email: ${process.env.NOTIFICATIONS_ENABLED === 'true' ? 'ACTIVADO' : 'DESACTIVADO'}
   `);
 });

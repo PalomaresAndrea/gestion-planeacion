@@ -2,7 +2,7 @@ import Planeacion from '../models/Planeacion.js';
 import Avance from '../models/Avance.js';
 import Evidencia from '../models/Evidencia.js';
 
-// 📊 Reporte institucional consolidado
+//  Reporte institucional consolidado
 export const obtenerReporteInstitucional = async (req, res) => {
   try {
     const { ciclo } = req.query;

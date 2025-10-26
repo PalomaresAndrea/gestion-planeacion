@@ -1,0 +1,157 @@
+/* === Layout General === */
+.layout {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+  background: #f4f6f9;
+  font-family: 'Inter', sans-serif;
+  overflow: hidden;
+}
+
+/* === Sidebar Moderno === */
+.sidebar-modern {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff;
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  transition: width 0.3s ease, transform 0.3s ease;
+  box-shadow: 2px 0 15px rgba(0, 0, 0, 0.1);
+  z-index: 1000; /* Mayor z-index */
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+}
+
+.sidebar-modern.closed {
+  width: 70px;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.sidebar-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.toggle-btn {
+  background: transparent;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+}
+
+/* === Navegación === */
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  padding: 20px 10px;
+  flex: 1;
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: rgba(255, 255, 255, 0.85);
+  text-decoration: none;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 6px;
+  transition: all 0.25s ease;
+}
+
+.sidebar-link:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.sidebar-link.active {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-weight: 600;
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+}
+
+/* === Footer del Sidebar === */
+.sidebar-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  font-size: 0.9rem;
+}
+
+.user-name {
+  margin: 0;
+  font-weight: 600;
+}
+
+.user-role {
+  margin: 0;
+  opacity: 0.8;
+  font-size: 0.8rem;
+}
+
+/* === Contenido Principal === */
+.main-modern {
+  flex: 1;
+  margin-left: 260px;
+  background: #f8fafc;
+  padding: 30px;
+  overflow-y: auto;
+  transition: margin-left 0.3s ease;
+  min-width: 0;
+  box-sizing: border-box;
+  width: calc(100% - 260px);
+  height: 100vh;
+}
+
+.sidebar-modern.closed ~ .main-modern {
+  margin-left: 70px;
+  width: calc(100% - 70px);
+}
+
+/* === Responsivo === */
+@media (max-width: 1024px) {
+  .main-modern {
+    padding: 25px;
+  }
+}
+
+@media (max-width: 768px) {
+  .sidebar-modern {
+    transform: translateX(-100%);
+    width: 280px;
+  }
+
+  .sidebar-modern.open {
+    transform: translateX(0);
+  }
+
+  .main-modern {
+    margin-left: 0 !important;
+    padding: 20px;
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .main-modern {
+    padding: 15px;
+  }
+}

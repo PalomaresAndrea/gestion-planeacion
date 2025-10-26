@@ -43,6 +43,9 @@ export const avanceService = {
     api.get('/avances/reporte-general', { params: { ciclo } }),
   getDatosGraficas: (ciclo) => 
     api.get('/avances/graficas', { params: { ciclo } }),
+  // NUEVO: Endpoint para recordatorios
+  enviarRecordatorios: (ciclo) => 
+    api.post('/avances/recordatorios', { ciclo }),
 }
 
 // Servicios para Evidencias
@@ -70,6 +73,13 @@ export const reporteService = {
     api.get('/reportes/exportar', { 
       params: { formato, tipo, ciclo, profesor }
     }),
+}
+
+// NUEVO: Servicios para Notificaciones
+export const notificacionService = {
+  enviarRecordatorios: (ciclo) => api.post('/avances/recordatorios', { ciclo }),
+  enviarAlertaCoordinadores: (data) => api.post('/notificaciones/alertas', data),
+  getEstadoNotificaciones: () => api.get('/notificaciones/estado'),
 }
 
 export default api

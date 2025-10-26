@@ -1,4 +1,5 @@
 import Avance from '../models/Avance.js';
+import notificacionService from '../services/notificacionService.js';
 
 //  Crear avance 
 export const crearAvance = async (req, res) => {
@@ -151,6 +152,94 @@ export const eliminarAvance = async (req, res) => {
   } catch (error) {
     console.error(' Error eliminando avance:', error);
     res.status(500).json({ message: error.message });
+  }
+};
+
+//  NUEVA FUNCIÓN: Enviar recordatorios por email
+export const enviarRecordatorios = async (req, res) => {
+  try {
+    const { ciclo } = req.body;
+    const cicloFiltro = ciclo || `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`;
+    
+    console.log('📧 Iniciando envío de recordatorios para ciclo:', cicloFiltro);
+
+    // Obtener profesores con avances pendientes
+    const avancesPendientes = await Avance.aggregate([
+      {
+        $match: {
+          cicloEscolar: cicloFiltro,
+          cumplimiento: { $in: ['parcial', 'no cumplido'] }
+        }
+      },
+      {
+        $group: {
+          _id: '$profesor',
+          pendientes: { $push: {
+            materia: '$materia',
+            parcial: '$parcial',
+            porcentaje: '$porcentajeAvance',
+            cumplimiento: '$cumplimiento'
+          }}
+        }
+      }
+    ]);
+
+    console.log(`📊 Encontrados ${avancesPendientes.length} profesores con avances pendientes`);
+
+    let resultados = [];
+    let emailsEnviados = 0;
+    
+    // Enviar recordatorios a cada profesor
+    for (const profesorData of avancesPendientes) {
+      try {
+        // En un sistema real, obtendrías el email del profesor de la base de datos
+        const profesorEmail = 'luisfernandoma94@gmail.com';
+        
+        console.log(`📨 Enviando recordatorio a: ${profesorData._id} (${profesorEmail})`);
+        
+        const resultado = await notificacionService.enviarRecordatorioAvance(
+          profesorData._id,
+          profesorEmail,
+          profesorData.pendientes
+        );
+        
+        if (resultado.success) {
+          emailsEnviados++;
+        }
+        
+        resultados.push({
+          profesor: profesorData._id,
+          email: profesorEmail,
+          pendientes: profesorData.pendientes.length,
+          envioExitoso: resultado.success,
+          error: resultado.error
+        });
+
+      } catch (error) {
+        console.error(`❌ Error enviando a ${profesorData._id}:`, error);
+        resultados.push({
+          profesor: profesorData._id,
+          error: error.message,
+          envioExitoso: false
+        });
+      }
+    }
+
+    console.log(`✅ Envío de recordatorios completado: ${emailsEnviados}/${avancesPendientes.length} exitosos`);
+
+    res.json({
+      message: `Recordatorios enviados a ${emailsEnviados} de ${avancesPendientes.length} profesores`,
+      totalProfesores: avancesPendientes.length,
+      emailsEnviados: emailsEnviados,
+      resultados: resultados
+    });
+
+  } catch (error) {
+    console.error('❌ Error en enviarRecordatorios:', error);
+    res.status(500).json({ 
+      message: 'Error enviando recordatorios',
+      error: error.message 
+    });
   }
 };
 

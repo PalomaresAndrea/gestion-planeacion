@@ -1,61 +1,73 @@
-import React from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import React, { useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+import {
+  Home,
+  FileText,
+  BarChart2,
+  Folder,
+  ClipboardList,
+  Menu,
+  X,
+  User,
+} from "lucide-react";
+import "./LayoutStyles.css";
 
 const Layout = ({ children }) => {
-  const location = useLocation()
+  const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const navItems = [
-    { path: '/', label: 'Dashboard', icon: '📊' },
-    { path: '/planeaciones', label: 'Planeaciones', icon: '📝' },
-    { path: '/avances', label: 'Avances', icon: '📈' },
-    { path: '/evidencias', label: 'Evidencias', icon: '📁' },
-    { path: '/reportes', label: 'Reportes', icon: '📋' },
-  ]
+    { path: "/", label: "Dashboard", icon: <Home size={18} /> },
+    { path: "/planeaciones", label: "Planeaciones", icon: <FileText size={18} /> },
+    { path: "/avances", label: "Avances", icon: <BarChart2 size={18} /> },
+    { path: "/evidencias", label: "Evidencias", icon: <Folder size={18} /> },
+    { path: "/reportes", label: "Reportes", icon: <ClipboardList size={18} /> },
+  ];
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
-      <nav style={{
-        width: '250px',
-        background: '#2c3e50',
-        color: 'white',
-        padding: '20px 0'
-      }}>
-        <div style={{ padding: '0 20px 20px', borderBottom: '1px solid #34495e', marginBottom: '20px' }}>
-          <h2 style={{ fontSize: '1.2rem', fontWeight: '600' }}>🎓 Gestión Académica</h2>
+    <div className="layout">
+      {/* Sidebar */}
+      <aside className={`sidebar-modern ${sidebarOpen ? "open" : "closed"}`}>
+        <div className="sidebar-header">
+          <h2 className="sidebar-title">🎓 Sistema</h2>
+          <button
+            className="toggle-btn"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+          >
+            {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
         </div>
-        <ul style={{ listStyle: 'none' }}>
-          {navItems.map((item) => (
-            <li key={item.path} style={{ marginBottom: '5px' }}>
-              <Link 
-                to={item.path} 
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  padding: '12px 20px',
-                  color: location.pathname === item.path ? 'white' : '#bdc3c7',
-                  textDecoration: 'none',
-                  background: location.pathname === item.path ? '#3498db' : 'transparent',
-                  transition: 'all 0.3s'
-                }}
-              >
-                <span style={{ marginRight: '10px', fontSize: '1.1rem' }}>{item.icon}</span>
-                {item.label}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
-      
-      <main style={{ 
-        flex: 1, 
-        padding: '20px', 
-        background: '#ecf0f1',
-        overflowY: 'auto'
-      }}>
-        {children}
-      </main>
-    </div>
-  )
-}
 
-export default Layout
+        <nav className="sidebar-nav">
+          {navItems.map((item) => (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={`sidebar-link ${
+                location.pathname === item.path ? "active" : ""
+              }`}
+            >
+              <span className="icon">{item.icon}</span>
+              {sidebarOpen && <span>{item.label}</span>}
+            </Link>
+          ))}
+        </nav>
+
+        {sidebarOpen && (
+          <div className="sidebar-footer">
+            <User size={20} />
+            <div>
+              <p className="user-name">Administrador</p>
+              <p className="user-role">Sistema</p>
+            </div>
+          </div>
+        )}
+      </aside>
+
+      {/* Main content */}
+      <main className="main-modern">{children}</main>
+    </div>
+  );
+};
+
+export default Layout;

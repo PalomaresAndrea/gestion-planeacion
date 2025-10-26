@@ -7,7 +7,8 @@ import {
   eliminarAvance,
   obtenerEstadisticasProfesor,
   obtenerReporteGeneral,
-  obtenerDatosGraficas
+  obtenerDatosGraficas,
+  enviarRecordatorios // NUEVA FUNCIÓN IMPORTADA
 } from '../controllers/avanceController.js';
 
 const router = express.Router();
@@ -145,6 +146,30 @@ router.get('/:id', obtenerAvancePorId);
  *         description: Avance creado correctamente
  */
 router.post('/', crearAvance);
+
+/**
+ * @swagger
+ * /api/avances/recordatorios:
+ *   post:
+ *     summary: Enviar recordatorios por email a profesores con avances pendientes
+ *     tags: [Avances]
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               ciclo:
+ *                 type: string
+ *                 description: Ciclo escolar para filtrar (opcional)
+ *     responses:
+ *       200:
+ *         description: Recordatorios enviados exitosamente
+ *       500:
+ *         description: Error al enviar recordatorios
+ */
+router.post('/recordatorios', enviarRecordatorios);
 
 // 🧪 RUTA DE PRUEBA - NUEVA
 router.post('/test', async (req, res) => {

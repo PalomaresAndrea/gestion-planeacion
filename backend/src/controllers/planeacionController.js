@@ -1,4 +1,5 @@
 import Planeacion from '../models/Planeacion.js';
+import notificacionService from '../services/notificacionService.js';
 
 // Crear nueva planeación
 export const crearPlaneacion = async (req, res) => {
@@ -43,7 +44,7 @@ export const obtenerPlaneacionPorId = async (req, res) => {
   }
 };
 
-// Actualizar planeación por ID me disculpo por todos los commits sacrificados
+// Actualizar planeación por ID
 export const actualizarPlaneacion = async (req, res) => {
   try {
     const actualizada = await Planeacion.findByIdAndUpdate(
@@ -57,7 +58,7 @@ export const actualizarPlaneacion = async (req, res) => {
   }
 };
 
-// Revisar planeación (para coordinadores)
+// Revisar planeación (para coordinadores) - CON NOTIFICACIÓN
 export const revisarPlaneacion = async (req, res) => {
   try {
     const { estado, observaciones, coordinadorRevisor } = req.body;
@@ -72,6 +73,21 @@ export const revisarPlaneacion = async (req, res) => {
       },
       { new: true }
     );
+
+    // 📧 ENVIAR NOTIFICACIÓN POR EMAIL
+    if (estado === 'aprobado' || estado === 'rechazado') {
+      try {
+        await notificacionService.notificarRevisionPlaneacion(
+          actualizada, 
+          estado, 
+          observaciones
+        );
+        console.log(`📧 Notificación enviada para planeación ${estado}`);
+      } catch (emailError) {
+        console.error('Error enviando notificación:', emailError);
+        // No fallar la operación principal si falla el email
+      }
+    }
 
     res.json(actualizada);
   } catch (error) {
