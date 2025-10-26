@@ -1,13 +1,72 @@
 import Avance from '../models/Avance.js';
 
-//  Crear avance
+//  Crear avance 
 export const crearAvance = async (req, res) => {
   try {
-    const nuevo = new Avance(req.body);
+    console.log(' Creando avance con datos:', JSON.stringify(req.body, null, 2));
+    
+    // Validar campos requeridos
+    const { profesor, materia, parcial } = req.body;
+    if (!profesor || !materia || !parcial) {
+      return res.status(400).json({
+        message: 'Campos requeridos faltantes',
+        required: ['profesor', 'materia', 'parcial'],
+        received: { profesor, materia, parcial }
+      });
+    }
+
+    // Calcular porcentaje automáticamente si no se proporciona
+    const temasPlaneados = req.body.temasPlaneados || [];
+    const temasCubiertos = req.body.temasCubiertos || [];
+    let porcentajeCalculado = 0;
+    
+    if (temasPlaneados.length > 0) {
+      porcentajeCalculado = Math.round((temasCubiertos.length / temasPlaneados.length) * 100);
+    }
+
+    // Preparar datos con valores por defecto
+    const datosAvance = {
+      ...req.body,
+      porcentajeAvance: req.body.porcentajeAvance || porcentajeCalculado,
+      cicloEscolar: req.body.cicloEscolar || `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
+      temasPlaneados: temasPlaneados,
+      temasCubiertos: temasCubiertos,
+      actividadesRealizadas: req.body.actividadesRealizadas || [],
+      dificultades: req.body.dificultades || '',
+      observaciones: req.body.observaciones || ''
+    };
+
+    console.log(' Creando nuevo documento Avance con datos:', datosAvance);
+    const nuevo = new Avance(datosAvance);
+    console.log(' Avance creado en memoria:', nuevo);
+    
+    console.log(' Guardando en base de datos...');
     await nuevo.save();
-    res.status(201).json(nuevo);
+    console.log(' Avance guardado exitosamente');
+    
+    res.status(201).json({
+      message: 'Avance creado correctamente',
+      data: nuevo
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(' ERROR en crearAvance:');
+    console.error('Mensaje:', error.message);
+    console.error('Nombre del error:', error.name);
+    
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map(e => e.message);
+      console.error('Errores de validación:', errors);
+      return res.status(400).json({
+        message: 'Error de validación',
+        errors: errors
+      });
+    }
+
+    console.error('Stack completo:', error.stack);
+    res.status(500).json({ 
+      message: 'Error interno al crear avance',
+      error: error.message
+    });
   }
 };
 
@@ -23,9 +82,13 @@ export const obtenerAvances = async (req, res) => {
     if (cumplimiento) filtro.cumplimiento = cumplimiento;
     if (ciclo) filtro.cicloEscolar = ciclo;
 
+    console.log(' Buscando avances con filtro:', filtro);
     const avances = await Avance.find(filtro).sort({ fechaRegistro: -1 });
+    console.log(` Encontrados ${avances.length} avances`);
+    
     res.json(avances);
   } catch (error) {
+    console.error(' Error obteniendo avances:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -33,12 +96,18 @@ export const obtenerAvances = async (req, res) => {
 //  Obtener avance por ID
 export const obtenerAvancePorId = async (req, res) => {
   try {
+    console.log('🔍 Buscando avance con ID:', req.params.id);
     const avance = await Avance.findById(req.params.id);
+    
     if (!avance) {
+      console.log(' Avance no encontrado');
       return res.status(404).json({ message: 'Avance no encontrado' });
     }
+    
+    console.log(' Avance encontrado');
     res.json(avance);
   } catch (error) {
+    console.error(' Error obteniendo avance por ID:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -46,13 +115,23 @@ export const obtenerAvancePorId = async (req, res) => {
 //  Actualizar avance por ID
 export const actualizarAvance = async (req, res) => {
   try {
+    console.log(' Actualizando avance ID:', req.params.id);
+    console.log('Datos de actualización:', req.body);
+    
     const actualizado = await Avance.findByIdAndUpdate(
       req.params.id, 
       req.body, 
       { new: true, runValidators: true }
     );
+    
+    if (!actualizado) {
+      return res.status(404).json({ message: 'Avance no encontrado' });
+    }
+    
+    console.log(' Avance actualizado');
     res.json(actualizado);
   } catch (error) {
+    console.error(' Error actualizando avance:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -60,9 +139,17 @@ export const actualizarAvance = async (req, res) => {
 //  Eliminar avance
 export const eliminarAvance = async (req, res) => {
   try {
-    await Avance.findByIdAndDelete(req.params.id);
+    console.log('🗑️ Eliminando avance ID:', req.params.id);
+    const resultado = await Avance.findByIdAndDelete(req.params.id);
+    
+    if (!resultado) {
+      return res.status(404).json({ message: 'Avance no encontrado' });
+    }
+    
+    console.log(' Avance eliminado');
     res.json({ message: 'Avance eliminado correctamente' });
   } catch (error) {
+    console.error(' Error eliminando avance:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -71,9 +158,15 @@ export const eliminarAvance = async (req, res) => {
 export const obtenerEstadisticasProfesor = async (req, res) => {
   try {
     const { profesor, ciclo } = req.query;
+    
+    if (!profesor) {
+      return res.status(400).json({ message: 'Se requiere el parámetro profesor' });
+    }
+
     const filtro = { profesor };
     if (ciclo) filtro.cicloEscolar = ciclo;
 
+    console.log(' Obteniendo estadísticas para profesor:', profesor);
     const avances = await Avance.find(filtro);
     
     const estadisticas = {
@@ -81,12 +174,13 @@ export const obtenerEstadisticasProfesor = async (req, res) => {
       cumplido: avances.filter(a => a.cumplimiento === 'cumplido').length,
       parcial: avances.filter(a => a.cumplimiento === 'parcial').length,
       noCumplido: avances.filter(a => a.cumplimiento === 'no cumplido').length,
-      promedioPorcentaje: avances.reduce((acc, curr) => acc + curr.porcentajeAvance, 0) / avances.length,
+      promedioPorcentaje: avances.length > 0 ? 
+        (avances.reduce((acc, curr) => acc + curr.porcentajeAvance, 0) / avances.length).toFixed(2) : 0,
       porMateria: {},
       porParcial: {
-        1: avances.filter(a => a.parcial === 1),
-        2: avances.filter(a => a.parcial === 2),
-        3: avances.filter(a => a.parcial === 3)
+        1: avances.filter(a => a.parcial === 1).length,
+        2: avances.filter(a => a.parcial === 2).length,
+        3: avances.filter(a => a.parcial === 3).length
       }
     };
 
@@ -98,8 +192,10 @@ export const obtenerEstadisticasProfesor = async (req, res) => {
       estadisticas.porMateria[avance.materia].push(avance);
     });
 
+    console.log(' Estadísticas generadas');
     res.json(estadisticas);
   } catch (error) {
+    console.error(' Error obteniendo estadísticas:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -110,6 +206,7 @@ export const obtenerReporteGeneral = async (req, res) => {
     const { ciclo } = req.query;
     const filtro = ciclo ? { cicloEscolar: ciclo } : {};
 
+    console.log(' Generando reporte general');
     const avances = await Avance.find(filtro);
     
     const reporte = {
@@ -122,11 +219,12 @@ export const obtenerReporteGeneral = async (req, res) => {
       porProfesor: {},
       porMateria: {},
       porParcial: {
-        1: avances.filter(a => a.parcial === 1),
-        2: avances.filter(a => a.parcial === 2),
-        3: avances.filter(a => a.parcial === 3)
+        1: avances.filter(a => a.parcial === 1).length,
+        2: avances.filter(a => a.parcial === 2).length,
+        3: avances.filter(a => a.parcial === 3).length
       },
-      promedioGlobal: avances.reduce((acc, curr) => acc + curr.porcentajeAvance, 0) / avances.length
+      promedioGlobal: avances.length > 0 ? 
+        (avances.reduce((acc, curr) => acc + curr.porcentajeAvance, 0) / avances.length).toFixed(2) : 0
     };
 
     // Agrupar por profesor
@@ -147,8 +245,8 @@ export const obtenerReporteGeneral = async (req, res) => {
     // Calcular promedios por profesor
     Object.keys(reporte.porProfesor).forEach(profesor => {
       const profAvances = avances.filter(a => a.profesor === profesor);
-      reporte.porProfesor[profesor].promedioPorcentaje = 
-        profAvances.reduce((acc, curr) => acc + curr.porcentajeAvance, 0) / profAvances.length;
+      reporte.porProfesor[profesor].promedioPorcentaje = profAvances.length > 0 ?
+        (profAvances.reduce((acc, curr) => acc + curr.porcentajeAvance, 0) / profAvances.length).toFixed(2) : 0;
     });
 
     // Agrupar por materia
@@ -165,8 +263,10 @@ export const obtenerReporteGeneral = async (req, res) => {
       reporte.porMateria[avance.materia][avance.cumplimiento]++;
     });
 
+    console.log(' Reporte general generado');
     res.json(reporte);
   } catch (error) {
+    console.error(' Error generando reporte general:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -177,6 +277,7 @@ export const obtenerDatosGraficas = async (req, res) => {
     const { ciclo } = req.query;
     const filtro = ciclo ? { cicloEscolar: ciclo } : {};
 
+    console.log(' Obteniendo datos para gráficas');
     const avances = await Avance.find(filtro);
 
     const datos = {
@@ -196,13 +297,14 @@ export const obtenerDatosGraficas = async (req, res) => {
           avances.filter(a => a.parcial === 3).length
         ]
       },
-      porcentajePromedio: Math.round(
-        avances.reduce((acc, curr) => acc + curr.porcentajeAvance, 0) / avances.length
-      )
+      porcentajePromedio: avances.length > 0 ? 
+        Math.round(avances.reduce((acc, curr) => acc + curr.porcentajeAvance, 0) / avances.length) : 0
     };
 
+    console.log(' Datos para gráficas generados');
     res.json(datos);
   } catch (error) {
+    console.error(' Error obteniendo datos para gráficas:', error);
     res.status(500).json({ message: error.message });
   }
 };
