@@ -14,7 +14,16 @@ import reporteRoutes from './src/routes/reporteRoutes.js';
 dotenv.config();
 const app = express();
 
-//  Middleware
+//  MIDDLEWARE DE LOGGING - NUEVO
+app.use((req, res, next) => {
+  console.log('📨 Request:', req.method, req.url);
+  if (req.method === 'POST' || req.method === 'PUT') {
+    console.log('Body:', JSON.stringify(req.body, null, 2));
+  }
+  next();
+});
+
+// 🔌 Middleware
 app.use(cors());
 app.use(express.json());
 
@@ -40,12 +49,13 @@ app.get('/', (req, res) => {
     endpoints: {
       planeaciones: '/api/planeaciones',
       avances: '/api/avances',
-      evidencias: '/api/evidencias'
+      evidencias: '/api/evidencias',
+      reportes: '/api/reportes'
     }
   });
 });
 
-//  Manejo de rutas no encontradas (CORREGIDO)
+//  Manejo de rutas no encontradas
 app.use((req, res) => {
   res.status(404).json({
     message: `Ruta no encontrada: ${req.method} ${req.originalUrl}`,
@@ -63,17 +73,37 @@ app.use((req, res) => {
       'DELETE /api/avances/:id',
       'GET    /api/evidencias',
       'POST   /api/evidencias',
+      'GET    /api/reportes/institucional',
+      'GET    /api/reportes/profesor',
       'GET    /api-docs'
     ]
   });
 });
 
-//  Manejo global de errores
+//  Manejo global de errores - MEJORADO
 app.use((error, req, res, next) => {
-  console.error('Error:', error);
+  console.error(' ERROR GLOBAL:');
+  console.error('Mensaje:', error.message);
+  console.error('Stack:', error.stack);
+  console.error('Tipo:', error.name);
+  
+  if (error.name === 'ValidationError') {
+    return res.status(400).json({
+      message: 'Error de validación',
+      errors: Object.values(error.errors).map(e => e.message)
+    });
+  }
+  
+  if (error.name === 'CastError') {
+    return res.status(400).json({
+      message: 'ID inválido'
+    });
+  }
+
   res.status(500).json({
     message: 'Error interno del servidor',
-    error: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong'
+    error: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong',
+    details: process.env.NODE_ENV === 'development' ? error.stack : undefined
   });
 });
 
@@ -87,5 +117,6 @@ app.listen(PORT, () => {
      Servidor corriendo en puerto ${PORT}
      Documentación disponible en: http://localhost:${PORT}/api-docs
      Ambiente: ${process.env.NODE_ENV || 'development'}
+     Logging activado - Revisa la consola para ver las peticiones
   `);
 });

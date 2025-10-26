@@ -8,7 +8,7 @@ import {
   obtenerEstadisticasProfesor,
   obtenerReporteGeneral,
   obtenerDatosGraficas
-} from '../Controllers/avanceController.js';
+} from '../controllers/avanceController.js';
 
 const router = express.Router();
 
@@ -145,6 +145,21 @@ router.get('/:id', obtenerAvancePorId);
  *         description: Avance creado correctamente
  */
 router.post('/', crearAvance);
+
+// 🧪 RUTA DE PRUEBA - NUEVA
+router.post('/test', async (req, res) => {
+  try {
+    console.log('🧪 TEST endpoint llamado con:', req.body);
+    res.json({ 
+      message: '✅ Test exitoso', 
+      dataReceived: req.body,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ Test error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 /**
  * @swagger

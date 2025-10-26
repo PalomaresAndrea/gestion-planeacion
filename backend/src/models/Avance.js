@@ -25,32 +25,34 @@ const avanceSchema = new mongoose.Schema({
   },
   temasPlaneados: {
     type: [String],
-    required: true
+    default: []
   },
   temasCubiertos: {
     type: [String],
-    required: true
+    default: []
   },
   porcentajeAvance: {
     type: Number,
-    required: true,
+    default: 0, // Cambiado de required a default: 0
     min: 0,
     max: 100
   },
   cumplimiento: { 
     type: String, 
     enum: ['cumplido', 'parcial', 'no cumplido'], 
-    required: true 
+    default: 'parcial'
   },
   actividadesRealizadas: {
     type: [String],
     default: []
   },
   dificultades: {
-    type: String
+    type: String,
+    default: ''
   },
   observaciones: { 
-    type: String 
+    type: String,
+    default: ''
   },
   fechaRegistro: { 
     type: Date, 
@@ -65,7 +67,8 @@ const avanceSchema = new mongoose.Schema({
 // Método para calcular porcentaje automáticamente
 avanceSchema.methods.calcularPorcentaje = function() {
   if (this.temasPlaneados.length === 0) return 0;
-  return Math.round((this.temasCubiertos.length / this.temasPlaneados.length) * 100);
+  const porcentaje = Math.round((this.temasCubiertos.length / this.temasPlaneados.length) * 100);
+  return Math.min(100, Math.max(0, porcentaje)); // Asegurar que esté entre 0-100
 };
 
 // Middleware para actualizar porcentaje antes de guardar
@@ -75,4 +78,4 @@ avanceSchema.pre('save', function(next) {
   next();
 });
 
-export default mongoose.model('Avance', avanceSchema);
+export default mongoose.model('Avance', avanceSchema, 'avances');

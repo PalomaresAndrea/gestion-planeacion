@@ -35,14 +35,21 @@ const AvancesPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
-      // Filtrar arrays vacíos
+      // CORRECCIÓN: Solo enviar los datos básicos, el backend calculará el resto
       const dataToSend = {
-        ...formData,
+        profesor: formData.profesor,
+        materia: formData.materia,
+        parcial: formData.parcial,
         temasPlaneados: formData.temasPlaneados.filter(tema => tema.trim() !== ''),
         temasCubiertos: formData.temasCubiertos.filter(tema => tema.trim() !== ''),
         actividadesRealizadas: formData.actividadesRealizadas.filter(act => act.trim() !== ''),
-        cumplimiento: 'parcial' // Se calculará automáticamente
+        dificultades: formData.dificultades,
+        observaciones: formData.observaciones
+        // NO enviar 'cumplimiento' - el backend lo calculará automáticamente
+        // NO enviar 'porcentajeAvance' - el backend lo calculará automáticamente
       }
+      
+      console.log('Enviando datos al backend:', dataToSend)
       
       await avanceService.create(dataToSend)
       setShowForm(false)
@@ -54,7 +61,8 @@ const AvancesPage = () => {
       loadAvances()
       alert('Avance registrado exitosamente')
     } catch (error) {
-      alert('Error al registrar avance')
+      console.error('Error completo:', error)
+      alert('Error al registrar avance: ' + (error.response?.data?.message || error.message))
     }
   }
 
@@ -216,7 +224,7 @@ const AvancesPage = () => {
             {/* Temas Planeados */}
             <div>
               <label style={{ display: 'block', marginBottom: '10px', fontWeight: 'bold' }}>
-                Temas Planeados
+                Temas Planeados *
               </label>
               {formData.temasPlaneados.map((tema, index) => (
                 <div key={index} style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
@@ -397,6 +405,18 @@ const AvancesPage = () => {
                 resize: 'vertical'
               }}
             />
+
+            <div style={{ 
+              background: '#f8f9fa', 
+              padding: '15px', 
+              borderRadius: '4px',
+              borderLeft: '4px solid #3498db'
+            }}>
+              <p style={{ margin: 0, fontSize: '0.9rem', color: '#2c3e50' }}>
+                <strong>Nota:</strong> El porcentaje de avance y cumplimiento se calcularán automáticamente 
+                en base a los temas planeados vs temas cubiertos.
+              </p>
+            </div>
 
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
               <button

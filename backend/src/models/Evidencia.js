@@ -66,4 +66,4 @@ const evidenciaSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-export default mongoose.model('Evidencia', evidenciaSchema);
+export default mongoose.model('Evidencia', evidenciaSchema, 'evidencias');
