@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { avanceService, notificacionService } from '../services/api'
+import { useAuth } from '../context/AuthContext'
 import '../styles/AvancesStyles.css'
 
 const AvancesPage = () => {
@@ -12,7 +13,6 @@ const AvancesPage = () => {
   const [showRecordatorioModal, setShowRecordatorioModal] = useState(false)
   const [modalMessage, setModalMessage] = useState('')
   const [formData, setFormData] = useState({
-    profesor: '',
     materia: '',
     parcial: 1,
     temasPlaneados: [''],
@@ -24,12 +24,15 @@ const AvancesPage = () => {
   const [recordatorioEnviado, setRecordatorioEnviado] = useState(false)
   const [enviandoRecordatorios, setEnviandoRecordatorios] = useState(false)
 
+  const { user, isCoordinador, isAdmin, isProfesor } = useAuth()
+
   useEffect(() => {
     loadAvances()
   }, [filters])
 
   const loadAvances = async () => {
     try {
+      // El backend ya filtra automáticamente por usuario si es profesor
       const response = await avanceService.getAll(filters)
       setAvances(response.data)
     } catch (error) {
@@ -42,7 +45,16 @@ const AvancesPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
-      const dataToSend = {
+      // Para profesores, no enviar el campo profesor (se asigna automáticamente en el backend)
+      const dataToSend = isProfesor() ? {
+        materia: formData.materia,
+        parcial: formData.parcial,
+        temasPlaneados: formData.temasPlaneados.filter(tema => tema.trim() !== ''),
+        temasCubiertos: formData.temasCubiertos.filter(tema => tema.trim() !== ''),
+        actividadesRealizadas: formData.actividadesRealizadas.filter(act => act.trim() !== ''),
+        dificultades: formData.dificultades,
+        observaciones: formData.observaciones
+      } : {
         profesor: formData.profesor,
         materia: formData.materia,
         parcial: formData.parcial,
@@ -70,6 +82,12 @@ const AvancesPage = () => {
 
   const enviarRecordatorios = async () => {
     try {
+      // Verificar permisos para enviar recordatorios
+      if (!isCoordinador() && !isAdmin()) {
+        alert('No tienes permisos para enviar recordatorios')
+        return
+      }
+
       setEnviandoRecordatorios(true)
       const response = await notificacionService.enviarRecordatorios()
       setModalMessage(`✅ ${response.data.message}`)
@@ -110,9 +128,14 @@ const AvancesPage = () => {
 
   const resetForm = () => {
     setFormData({
-      profesor: '', materia: '', parcial: 1,
-      temasPlaneados: [''], temasCubiertos: [''],
-      actividadesRealizadas: [''], dificultades: '', observaciones: ''
+      profesor: '', 
+      materia: '', 
+      parcial: 1,
+      temasPlaneados: [''], 
+      temasCubiertos: [''],
+      actividadesRealizadas: [''], 
+      dificultades: '', 
+      observaciones: ''
     })
   }
 
@@ -120,11 +143,12 @@ const AvancesPage = () => {
     const colors = {
       cumplido: { bg: '#e8f8ec', color: '#1e7e34' },
       parcial: { bg: '#fff8e1', color: '#a68b00' },
-      no_cumplido: { bg: '#fdecea', color: '#a71d2a' }
+      'no cumplido': { bg: '#fdecea', color: '#a71d2a' }
     }
     return colors[cumplimiento] || colors.parcial
   }
 
+  // Estadísticas filtradas según rol
   const avancesPendientes = avances.filter(a => 
     a.cumplimiento === 'parcial' || a.cumplimiento === 'no cumplido'
   ).length
@@ -135,18 +159,46 @@ const AvancesPage = () => {
       .map(a => a.profesor)
   )]
 
-  if (loading) return <div className="loading">Cargando avances...</div>
+  // Verificar si puede enviar recordatorios
+  const puedeEnviarRecordatorios = () => {
+    return (isCoordinador() || isAdmin()) && avancesPendientes > 0
+  }
+
+  // Verificar si puede registrar avances para otros
+  const puedeRegistrarParaOtros = () => {
+    return isCoordinador() || isAdmin()
+  }
+
+  if (loading) {
+    return (
+      <div className="loading">
+        <div className="loading-spinner"></div>
+        <p>Cargando avances...</p>
+      </div>
+    )
+  }
 
   return (
     <div className="avances-container">
       <header className="avances-header">
         <div className="header-content">
-          <h1> Control de Avances</h1>
-          <p>Seguimiento del avance por parcial</p>
+          <div>
+            <h1>📊 {isProfesor() ? 'Mis Avances' : 'Control de Avances'}</h1>
+            <p>
+              {isProfesor() 
+                ? 'Seguimiento de tu avance académico por parcial' 
+                : 'Seguimiento del avance académico por parcial'
+              }
+            </p>
+          </div>
+          <div className="header-badge">
+            {isAdmin() ? 'Administrador' : isCoordinador() ? 'Coordinador' : 'Profesor'}
+          </div>
         </div>
         
         <div className="header-actions">
-          {avancesPendientes > 0 && (
+          {/* Botón de recordatorios solo para coordinadores/admin */}
+          {puedeEnviarRecordatorios() && (
             <button
               onClick={enviarRecordatorios}
               disabled={recordatorioEnviado || enviandoRecordatorios}
@@ -167,6 +219,7 @@ const AvancesPage = () => {
             </button>
           )}
           
+          {/* Botón para registrar avance */}
           <button
             onClick={() => setShowFormModal(true)}
             className="btn-primary"
@@ -176,7 +229,8 @@ const AvancesPage = () => {
         </div>
       </header>
 
-      {recordatorioEnviado && (
+      {/* Alertas según rol */}
+      {puedeEnviarRecordatorios() && recordatorioEnviado && (
         <div className="alert-success">
           <span>✅</span>
           <div>
@@ -186,7 +240,7 @@ const AvancesPage = () => {
         </div>
       )}
 
-      {avancesPendientes > 0 && !recordatorioEnviado && (
+      {puedeEnviarRecordatorios() && avancesPendientes > 0 && !recordatorioEnviado && (
         <div className="alert-warning">
           <span>⏰</span>
           <div>
@@ -196,9 +250,19 @@ const AvancesPage = () => {
         </div>
       )}
 
+      {isProfesor() && avancesPendientes > 0 && (
+        <div className="alert-info">
+          <span>ℹ️</span>
+          <div>
+            <strong>Tienes {avancesPendientes} avance(s) pendiente(s)</strong>
+            <div>Completa tus avances para mantener tu progreso actualizado</div>
+          </div>
+        </div>
+      )}
+
       {/* Filtros */}
       <div className="filters-card">
-        <h3>Filtros</h3>
+        <h3>🔍 Filtros</h3>
         <div className="filters-grid">
           <select 
             value={filters.cumplimiento || ''}
@@ -220,18 +284,28 @@ const AvancesPage = () => {
             <option value="3">Parcial 3</option>
           </select>
 
+          {/* Filtro por profesor solo para coordinadores/admin */}
+          {(isCoordinador() || isAdmin()) && (
+            <input
+              type="text"
+              placeholder="Filtrar por profesor..."
+              value={filters.profesor || ''}
+              onChange={(e) => setFilters(prev => ({ ...prev, profesor: e.target.value }))}
+            />
+          )}
+
           <input
             type="text"
-            placeholder="Filtrar por profesor..."
-            value={filters.profesor || ''}
-            onChange={(e) => setFilters(prev => ({ ...prev, profesor: e.target.value }))}
+            placeholder="Filtrar por materia..."
+            value={filters.materia || ''}
+            onChange={(e) => setFilters(prev => ({ ...prev, materia: e.target.value }))}
           />
 
           <button
             onClick={() => setFilters({})}
             className="btn-secondary"
           >
-            Limpiar Filtros
+            🗑️ Limpiar Filtros
           </button>
         </div>
       </div>
@@ -241,7 +315,7 @@ const AvancesPage = () => {
         <div className="modal-overlay">
           <div className="modal-container">
             <div className="modal-header">
-              <h3>Registrar Nuevo Avance</h3>
+              <h3>📝 Registrar Nuevo Avance</h3>
               <button 
                 onClick={() => {
                   setShowFormModal(false)
@@ -253,36 +327,41 @@ const AvancesPage = () => {
               </button>
             </div>
             <form onSubmit={handleSubmit} className="avance-form">
+              {/* Campo profesor solo para coordinadores/admin */}
+              {(isCoordinador() || isAdmin()) && (
+                <div className="form-row">
+                  <input
+                    type="text"
+                    placeholder="Profesor *"
+                    value={formData.profesor}
+                    onChange={(e) => setFormData(prev => ({ ...prev, profesor: e.target.value }))}
+                    required
+                  />
+                </div>
+              )}
+
               <div className="form-row">
                 <input
                   type="text"
-                  placeholder="Profesor"
-                  value={formData.profesor}
-                  onChange={(e) => setFormData(prev => ({ ...prev, profesor: e.target.value }))}
-                  required
-                />
-                <input
-                  type="text"
-                  placeholder="Materia"
+                  placeholder="Materia *"
                   value={formData.materia}
                   onChange={(e) => setFormData(prev => ({ ...prev, materia: e.target.value }))}
                   required
                 />
+                <select
+                  value={formData.parcial}
+                  onChange={(e) => setFormData(prev => ({ ...prev, parcial: parseInt(e.target.value) }))}
+                  required
+                >
+                  <option value="1">Parcial 1</option>
+                  <option value="2">Parcial 2</option>
+                  <option value="3">Parcial 3</option>
+                </select>
               </div>
-
-              <select
-                value={formData.parcial}
-                onChange={(e) => setFormData(prev => ({ ...prev, parcial: parseInt(e.target.value) }))}
-                required
-              >
-                <option value="1">Parcial 1</option>
-                <option value="2">Parcial 2</option>
-                <option value="3">Parcial 3</option>
-              </select>
 
               {/* Temas Planeados */}
               <div className="form-section">
-                <label>Temas Planeados *</label>
+                <label>📋 Temas Planeados *</label>
                 {formData.temasPlaneados.map((tema, index) => (
                   <div key={index} className="input-group">
                     <input
@@ -313,7 +392,7 @@ const AvancesPage = () => {
 
               {/* Temas Cubiertos */}
               <div className="form-section">
-                <label>Temas Cubiertos</label>
+                <label>✅ Temas Cubiertos</label>
                 {formData.temasCubiertos.map((tema, index) => (
                   <div key={index} className="input-group">
                     <input
@@ -344,7 +423,7 @@ const AvancesPage = () => {
 
               {/* Actividades Realizadas */}
               <div className="form-section">
-                <label>Actividades Realizadas</label>
+                <label>🎯 Actividades Realizadas</label>
                 {formData.actividadesRealizadas.map((actividad, index) => (
                   <div key={index} className="input-group">
                     <input
@@ -374,22 +453,23 @@ const AvancesPage = () => {
               </div>
 
               <textarea
-                placeholder="Dificultades encontradas (opcional)"
+                placeholder="⚠️ Dificultades encontradas (opcional)"
                 value={formData.dificultades}
                 onChange={(e) => setFormData(prev => ({ ...prev, dificultades: e.target.value }))}
                 rows="3"
               />
 
               <textarea
-                placeholder="Observaciones adicionales (opcional)"
+                placeholder="💭 Observaciones adicionales (opcional)"
                 value={formData.observaciones}
                 onChange={(e) => setFormData(prev => ({ ...prev, observaciones: e.target.value }))}
                 rows="3"
               />
 
               <div className="form-note">
-                <strong>Nota:</strong> El porcentaje de avance y cumplimiento se calcularán automáticamente 
+                <strong>📝 Nota:</strong> El porcentaje de avance y cumplimiento se calcularán automáticamente 
                 en base a los temas planeados vs temas cubiertos.
+                {isProfesor() && " El sistema asignará automáticamente tu nombre como profesor."}
               </div>
 
               <div className="form-actions">
@@ -415,7 +495,7 @@ const AvancesPage = () => {
         </div>
       )}
 
-      {/* Modal de Éxito */}
+      {/* Modales de éxito, error y recordatorio (se mantienen igual) */}
       {showSuccessModal && (
         <div className="modal-overlay">
           <div className="modal-container success-modal">
@@ -432,7 +512,6 @@ const AvancesPage = () => {
         </div>
       )}
 
-      {/* Modal de Error */}
       {showErrorModal && (
         <div className="modal-overlay">
           <div className="modal-container error-modal">
@@ -449,7 +528,6 @@ const AvancesPage = () => {
         </div>
       )}
 
-      {/* Modal de Recordatorio */}
       {showRecordatorioModal && (
         <div className="modal-overlay">
           <div className="modal-container success-modal">
@@ -469,7 +547,10 @@ const AvancesPage = () => {
       {/* Lista de avances */}
       <div className="avances-list-container">
         <div className="list-header">
-          <h2>Avances Registrados ({avances.length})</h2>
+          <h2>
+            {isProfesor() ? 'Mis Avances Registrados' : 'Avances Registrados'} 
+            ({avances.length})
+          </h2>
           
           {avances.length > 0 && (
             <div className="stats-summary">
@@ -489,7 +570,12 @@ const AvancesPage = () => {
         {avances.length === 0 ? (
           <div className="empty-state">
             <div className="empty-icon">📈</div>
-            <p>No hay avances registrados</p>
+            <p>
+              {isProfesor() 
+                ? 'No tienes avances registrados' 
+                : 'No hay avances registrados'
+              }
+            </p>
             <button
               onClick={() => setShowFormModal(true)}
               className="btn-primary"
@@ -533,7 +619,7 @@ const AvancesPage = () => {
                   <div className="card-content">
                     <div className="temas-grid">
                       <div className="temas-col">
-                        <strong>Temas Planeados:</strong>
+                        <strong>📋 Temas Planeados:</strong>
                         <ul>
                           {avance.temasPlaneados.map((tema, index) => (
                             <li key={index}>{tema}</li>
@@ -541,7 +627,7 @@ const AvancesPage = () => {
                         </ul>
                       </div>
                       <div className="temas-col">
-                        <strong>Temas Cubiertos:</strong>
+                        <strong>✅ Temas Cubiertos:</strong>
                         <ul>
                           {avance.temasCubiertos.map((tema, index) => (
                             <li key={index}>{tema}</li>
@@ -552,7 +638,7 @@ const AvancesPage = () => {
 
                     {avance.actividadesRealizadas && avance.actividadesRealizadas.length > 0 && (
                       <div className="actividades-section">
-                        <strong>Actividades Realizadas:</strong>
+                        <strong>🎯 Actividades Realizadas:</strong>
                         <ul>
                           {avance.actividadesRealizadas.map((actividad, index) => (
                             <li key={index}>{actividad}</li>
@@ -564,10 +650,10 @@ const AvancesPage = () => {
                     {(avance.dificultades || avance.observaciones) && (
                       <div className="observaciones-section">
                         {avance.dificultades && (
-                          <div><strong>Dificultades:</strong> {avance.dificultades}</div>
+                          <div><strong>⚠️ Dificultades:</strong> {avance.dificultades}</div>
                         )}
                         {avance.observaciones && (
-                          <div><strong>Observaciones:</strong> {avance.observaciones}</div>
+                          <div><strong>💭 Observaciones:</strong> {avance.observaciones}</div>
                         )}
                       </div>
                     )}

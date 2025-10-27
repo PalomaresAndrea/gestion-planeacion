@@ -1,19 +1,30 @@
 import Avance from '../models/Avance.js';
 import notificacionService from '../services/notificacionService.js';
+import Profesor from '../models/Profesor.js';
 
-//  Crear avance 
+// Crear avance 
 export const crearAvance = async (req, res) => {
   try {
     console.log(' Creando avance con datos:', JSON.stringify(req.body, null, 2));
     
     // Validar campos requeridos
-    const { profesor, materia, parcial } = req.body;
-    if (!profesor || !materia || !parcial) {
+    const { materia, parcial } = req.body;
+    if (!materia || !parcial) {
       return res.status(400).json({
         message: 'Campos requeridos faltantes',
-        required: ['profesor', 'materia', 'parcial'],
-        received: { profesor, materia, parcial }
+        required: ['materia', 'parcial'],
+        received: { materia, parcial }
       });
+    }
+
+    // Para profesores, asignar automáticamente su usuario_id y nombre
+    if (req.usuario.rol === 'profesor') {
+      const perfilProfesor = await Profesor.findOne({ usuario: req.usuario._id });
+      if (!perfilProfesor) {
+        return res.status(404).json({ message: 'Perfil de profesor no encontrado' });
+      }
+      req.body.usuario_id = req.usuario._id;
+      req.body.profesor = req.usuario.nombre;
     }
 
     // Calcular porcentaje automáticamente si no se proporciona
@@ -71,11 +82,16 @@ export const crearAvance = async (req, res) => {
   }
 };
 
-//  Obtener todos los avances (con filtros)
+// Obtener todos los avances (con filtros)
 export const obtenerAvances = async (req, res) => {
   try {
     const { profesor, materia, parcial, cumplimiento, ciclo } = req.query;
     const filtro = {};
+    
+    // Si es profesor, solo puede ver sus propios avances
+    if (req.usuario.rol === 'profesor') {
+      filtro.usuario_id = req.usuario._id;
+    }
     
     if (profesor) filtro.profesor = profesor;
     if (materia) filtro.materia = materia;
@@ -94,7 +110,7 @@ export const obtenerAvances = async (req, res) => {
   }
 };
 
-//  Obtener avance por ID
+// Obtener avance por ID
 export const obtenerAvancePorId = async (req, res) => {
   try {
     console.log('🔍 Buscando avance con ID:', req.params.id);
@@ -103,6 +119,11 @@ export const obtenerAvancePorId = async (req, res) => {
     if (!avance) {
       console.log(' Avance no encontrado');
       return res.status(404).json({ message: 'Avance no encontrado' });
+    }
+
+    // Verificar permisos: profesores solo pueden ver sus propios avances
+    if (req.usuario.rol === 'profesor' && avance.usuario_id.toString() !== req.usuario._id.toString()) {
+      return res.status(403).json({ message: 'No tienes permisos para ver este avance' });
     }
     
     console.log(' Avance encontrado');
@@ -113,21 +134,27 @@ export const obtenerAvancePorId = async (req, res) => {
   }
 };
 
-//  Actualizar avance por ID
+// Actualizar avance por ID
 export const actualizarAvance = async (req, res) => {
   try {
     console.log(' Actualizando avance ID:', req.params.id);
     console.log('Datos de actualización:', req.body);
     
+    const avance = await Avance.findById(req.params.id);
+    if (!avance) {
+      return res.status(404).json({ message: 'Avance no encontrado' });
+    }
+
+    // Verificar permisos: profesores solo pueden actualizar sus propios avances
+    if (req.usuario.rol === 'profesor' && avance.usuario_id.toString() !== req.usuario._id.toString()) {
+      return res.status(403).json({ message: 'No tienes permisos para actualizar este avance' });
+    }
+
     const actualizado = await Avance.findByIdAndUpdate(
       req.params.id, 
       req.body, 
       { new: true, runValidators: true }
     );
-    
-    if (!actualizado) {
-      return res.status(404).json({ message: 'Avance no encontrado' });
-    }
     
     console.log(' Avance actualizado');
     res.json(actualizado);
@@ -137,15 +164,22 @@ export const actualizarAvance = async (req, res) => {
   }
 };
 
-//  Eliminar avance
+// Eliminar avance
 export const eliminarAvance = async (req, res) => {
   try {
     console.log('🗑️ Eliminando avance ID:', req.params.id);
-    const resultado = await Avance.findByIdAndDelete(req.params.id);
     
-    if (!resultado) {
+    const avance = await Avance.findById(req.params.id);
+    if (!avance) {
       return res.status(404).json({ message: 'Avance no encontrado' });
     }
+
+    // Verificar permisos: profesores solo pueden eliminar sus propios avances
+    if (req.usuario.rol === 'profesor' && avance.usuario_id.toString() !== req.usuario._id.toString()) {
+      return res.status(403).json({ message: 'No tienes permisos para eliminar este avance' });
+    }
+
+    const resultado = await Avance.findByIdAndDelete(req.params.id);
     
     console.log(' Avance eliminado');
     res.json({ message: 'Avance eliminado correctamente' });
@@ -155,9 +189,14 @@ export const eliminarAvance = async (req, res) => {
   }
 };
 
-//  NUEVA FUNCIÓN: Enviar recordatorios por email
+// NUEVA FUNCIÓN: Enviar recordatorios por email (SOLO coordinadores y admin)
 export const enviarRecordatorios = async (req, res) => {
   try {
+    // Solo coordinadores y admin pueden enviar recordatorios
+    if (!['coordinador', 'admin'].includes(req.usuario.rol)) {
+      return res.status(403).json({ message: 'No tienes permisos para enviar recordatorios' });
+    }
+
     const { ciclo } = req.body;
     const cicloFiltro = ciclo || `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`;
     
@@ -243,19 +282,25 @@ export const enviarRecordatorios = async (req, res) => {
   }
 };
 
-//  Estadísticas de cumplimiento por profesor
+// Estadísticas de cumplimiento por profesor
 export const obtenerEstadisticasProfesor = async (req, res) => {
   try {
     const { profesor, ciclo } = req.query;
     
-    if (!profesor) {
-      return res.status(400).json({ message: 'Se requiere el parámetro profesor' });
+    let filtro = {};
+    
+    // Si es profesor, solo puede ver sus propias estadísticas
+    if (req.usuario.rol === 'profesor') {
+      filtro.usuario_id = req.usuario._id;
+    } else if (profesor) {
+      filtro.profesor = profesor;
+    } else {
+      return res.status(400).json({ message: 'Se requiere el parámetro profesor para coordinadores/admin' });
     }
 
-    const filtro = { profesor };
     if (ciclo) filtro.cicloEscolar = ciclo;
 
-    console.log(' Obteniendo estadísticas para profesor:', profesor);
+    console.log(' Obteniendo estadísticas con filtro:', filtro);
     const avances = await Avance.find(filtro);
     
     const estadisticas = {
@@ -289,9 +334,14 @@ export const obtenerEstadisticasProfesor = async (req, res) => {
   }
 };
 
-//  Reporte general de cumplimiento
+// Reporte general de cumplimiento (SOLO coordinadores y admin)
 export const obtenerReporteGeneral = async (req, res) => {
   try {
+    // Solo coordinadores y admin pueden ver reportes generales
+    if (!['coordinador', 'admin'].includes(req.usuario.rol)) {
+      return res.status(403).json({ message: 'No tienes permisos para ver reportes generales' });
+    }
+
     const { ciclo } = req.query;
     const filtro = ciclo ? { cicloEscolar: ciclo } : {};
 
@@ -360,9 +410,14 @@ export const obtenerReporteGeneral = async (req, res) => {
   }
 };
 
-//  Datos para gráficas
+// Datos para gráficas (SOLO coordinadores y admin)
 export const obtenerDatosGraficas = async (req, res) => {
   try {
+    // Solo coordinadores y admin pueden ver gráficas generales
+    if (!['coordinador', 'admin'].includes(req.usuario.rol)) {
+      return res.status(403).json({ message: 'No tienes permisos para ver gráficas generales' });
+    }
+
     const { ciclo } = req.query;
     const filtro = ciclo ? { cicloEscolar: ciclo } : {};
 

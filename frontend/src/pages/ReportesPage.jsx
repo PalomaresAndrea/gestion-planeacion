@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { reporteService } from '../services/api'
+import { useAuth } from '../context/AuthContext'
 import '../styles/ReportesStyles.css'
 
 const ReportesPage = () => {
@@ -12,11 +13,45 @@ const ReportesPage = () => {
     profesor: ''
   })
 
+  const { user, isCoordinador, isAdmin } = useAuth()
+
+  // Verificar permisos al cargar el componente
   useEffect(() => {
+    if (!isCoordinador() && !isAdmin()) {
+      // No hacer nada, el componente mostrará el mensaje de no autorizado
+      return
+    }
+
     if (activeTab === 'institucional') {
       loadReporteInstitucional()
     }
-  }, [activeTab])
+  }, [activeTab, isCoordinador, isAdmin])
+
+  // Si el usuario no tiene permisos, mostrar mensaje de no autorizado
+  if (!isCoordinador() && !isAdmin()) {
+    return (
+      <div className="reportes-container">
+        <div className="unauthorized-access">
+          <div className="unauthorized-icon">🚫</div>
+          <h1>Acceso No Autorizado</h1>
+          <p>
+            No tienes permisos para acceder a los reportes institucionales. 
+            Esta sección está disponible solo para coordinadores y administradores.
+          </p>
+          <div className="unauthorized-info">
+            <p><strong>Tu rol actual:</strong> {user?.rol || 'Usuario'}</p>
+            <p><strong>Roles permitidos:</strong> Coordinador, Administrador</p>
+          </div>
+          <button 
+            className="btn-primary"
+            onClick={() => window.history.back()}
+          >
+            Volver Atrás
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   const loadReporteInstitucional = async () => {
     setLoading(true)
@@ -95,8 +130,16 @@ const ReportesPage = () => {
   return (
     <div className="reportes-container">
       <header className="reportes-header">
-        <h1> Reportes Institucionales</h1>
-        <p>Análisis y estadísticas del sistema académico</p>
+        <h1>📊 Reportes Institucionales</h1>
+        <p>
+          {isAdmin() 
+            ? 'Panel completo de análisis y estadísticas del sistema académico' 
+            : 'Análisis y estadísticas académicas - Vista de coordinador'
+          }
+        </p>
+        <div className="user-role-badge">
+          {isAdmin() ? 'Administrador' : 'Coordinador'}
+        </div>
       </header>
 
       {/* Filtros y controles */}
@@ -108,13 +151,13 @@ const ReportesPage = () => {
               onClick={() => setActiveTab('institucional')}
               className={`tab-button ${activeTab === 'institucional' ? 'active' : ''}`}
             >
-               Institucional
+              🏫 Institucional
             </button>
             <button
               onClick={() => setActiveTab('profesor')}
               className={`tab-button ${activeTab === 'profesor' ? 'active' : ''}`}
             >
-               Por Profesor
+              👨‍🏫 Por Profesor
             </button>
           </div>
 
@@ -145,14 +188,14 @@ const ReportesPage = () => {
                 onClick={() => activeTab === 'institucional' ? loadReporteInstitucional() : loadReporteProfesor()}
                 className="btn-primary"
               >
-                 Actualizar
+                🔄 Actualizar
               </button>
 
               <select
                 onChange={(e) => handleExport(e.target.value, activeTab)}
                 className="export-select"
               >
-                <option value=""> Exportar...</option>
+                <option value="">📥 Exportar...</option>
                 <option value="pdf">PDF</option>
                 <option value="excel">Excel</option>
               </select>
@@ -174,7 +217,7 @@ const ReportesPage = () => {
           {/* Encabezado del reporte */}
           <div className="reporte-header">
             <div className="header-info">
-              <h2>Reporte Institucional</h2>
+              <h2>🏫 Reporte Institucional</h2>
               <p>
                 Período: {reporteInstitucional.periodo} | 
                 Generado: {new Date(reporteInstitucional.fechaGeneracion).toLocaleDateString()}
@@ -217,7 +260,7 @@ const ReportesPage = () => {
           <div className="stats-grid">
             {/* Planeaciones */}
             <div className="stat-card">
-              <h3> Planeaciones</h3>
+              <h3>📋 Planeaciones</h3>
               {renderProgressBar(
                 reporteInstitucional.planeaciones.porcentajeAprobacion,
                 'Tasa de Aprobación',
@@ -245,7 +288,7 @@ const ReportesPage = () => {
 
             {/* Avances */}
             <div className="stat-card">
-              <h3> Avances</h3>
+              <h3>📊 Avances</h3>
               {renderProgressBar(
                 reporteInstitucional.avances.porcentajeCumplimiento,
                 'Cumplimiento General',
@@ -273,7 +316,7 @@ const ReportesPage = () => {
 
             {/* Capacitación */}
             <div className="stat-card">
-              <h3> Capacitación</h3>
+              <h3>🎓 Capacitación</h3>
               <div className="progress-container">
                 <div className="progress-label">
                   <span>Validación de Evidencias</span>
@@ -312,7 +355,7 @@ const ReportesPage = () => {
 
           {/* Distribución por parcial */}
           <div className="distribution-card">
-            <h3> Distribución por Parcial</h3>
+            <h3>📅 Distribución por Parcial</h3>
             <div className="distribution-grid">
               {[1, 2, 3].map(parcial => (
                 <div key={parcial} className="period-card">
@@ -344,7 +387,7 @@ const ReportesPage = () => {
           {/* Encabezado del reporte */}
           <div className="reporte-header">
             <div className="header-info">
-              <h2>Reporte del Profesor: {reporteProfesor.profesor}</h2>
+              <h2>👨‍🏫 Reporte del Profesor: {reporteProfesor.profesor}</h2>
               <p>
                 Período: {reporteProfesor.periodo} | 
                 Generado: {new Date(reporteProfesor.fechaGeneracion).toLocaleDateString()}
@@ -387,7 +430,7 @@ const ReportesPage = () => {
           <div className="details-grid">
             {/* Planeaciones */}
             <div className="detail-card">
-              <h3> Planeaciones</h3>
+              <h3>📋 Planeaciones</h3>
               <div className="detail-list">
                 {Object.entries(reporteProfesor.detallePlaneaciones.porEstado).map(([estado, count]) => (
                   <div key={estado} className="detail-item">
@@ -400,7 +443,7 @@ const ReportesPage = () => {
 
             {/* Avances */}
             <div className="detail-card">
-              <h3> Avances</h3>
+              <h3>📊 Avances</h3>
               <div className="detail-list">
                 {Object.entries(reporteProfesor.detalleAvances.porCumplimiento).map(([cumplimiento, count]) => (
                   <div key={cumplimiento} className="detail-item">
@@ -416,7 +459,7 @@ const ReportesPage = () => {
 
             {/* Capacitación */}
             <div className="detail-card">
-              <h3> Capacitación</h3>
+              <h3>🎓 Capacitación</h3>
               <div className="capacitacion-details">
                 <div className="capacitacion-section">
                   <strong>Por Tipo:</strong>
@@ -445,7 +488,7 @@ const ReportesPage = () => {
       {/* Estado vacío */}
       {!loading && activeTab === 'profesor' && !reporteProfesor && (
         <div className="empty-state">
-          <div className="empty-icon"></div>
+          <div className="empty-icon">👨‍🏫</div>
           <h3>Reporte por Profesor</h3>
           <p>Ingresa el nombre del profesor y haz clic en "Actualizar" para generar el reporte</p>
           <button

@@ -13,6 +13,7 @@ import avanceRoutes from './src/routes/avanceRoutes.js';
 import evidenciaRoutes from './src/routes/evidenciaRoutes.js';
 import geolocalizacionRoutes from './src/routes/geolocalizacionRoutes.js';
 import reporteRoutes from './src/routes/reporteRoutes.js';
+import authRoutes from './src/routes/authRoutes.js'; // ✅ RUTA FALTANTE AGREGADA
 
 dotenv.config();
 const app = express();
@@ -46,6 +47,7 @@ app.use('/api/avances', avanceRoutes);
 app.use('/api/evidencias', evidenciaRoutes);
 app.use("/api/geolocalizacion", geolocalizacionRoutes);
 app.use('/api/reportes', reporteRoutes);
+app.use('/api/auth', authRoutes); // ✅ RUTA FALTANTE AGREGADA
 
 // Ruta de prueba
 app.get('/', (req, res) => {
@@ -53,6 +55,7 @@ app.get('/', (req, res) => {
     message: ' Backend activo y listo con Swagger!',
     documentation: '/api-docs',
     endpoints: {
+      auth: '/api/auth',
       planeaciones: '/api/planeaciones',
       avances: '/api/avances',
       evidencias: '/api/evidencias',
@@ -67,6 +70,10 @@ app.use((req, res) => {
   res.status(404).json({
     message: `Ruta no encontrada: ${req.method} ${req.originalUrl}`,
     availableRoutes: [
+      'POST   /api/auth/registro',
+      'POST   /api/auth/login',
+      'GET    /api/auth/perfil',
+      'PUT    /api/auth/perfil',
       'GET    /api/planeaciones',
       'POST   /api/planeaciones', 
       'GET    /api/planeaciones/ciclo-actual',
@@ -126,5 +133,6 @@ app.listen(PORT, () => {
      Ambiente: ${process.env.NODE_ENV || 'development'}
      Logging activado - Revisa la consola para ver las peticiones
      Notificaciones por email: ${process.env.NOTIFICATIONS_ENABLED === 'true' ? 'ACTIVADO' : 'DESACTIVADO'}
+     Autenticación disponible en: /api/auth
   `);
 });

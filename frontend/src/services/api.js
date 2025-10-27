@@ -9,14 +9,42 @@ const api = axios.create({
   },
 })
 
-// Interceptor para manejar errores
+// INTERCEPTOR PARA AGREGAR TOKEN JWT
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token')
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    return config
+  },
+  (error) => {
+    return Promise.reject(error)
+  }
+)
+
+// Interceptor para manejar errores de autenticación
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    if (error.response?.status === 401) {
+      // Token expirado o inválido
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      window.location.href = '/login'
+    }
     console.error('API Error:', error)
     return Promise.reject(error)
   }
 )
+
+// Servicios para Auth (NUEVO)
+export const authService = {
+  login: (credentials) => api.post('/auth/login', credentials),
+  registrar: (userData) => api.post('/auth/registrar', userData),
+  obtenerPerfil: () => api.get('/auth/perfil'),
+  actualizarPerfil: (userData) => api.put('/auth/perfil', userData),
+}
 
 // Servicios para Planeaciones
 export const planeacionService = {
@@ -43,7 +71,6 @@ export const avanceService = {
     api.get('/avances/reporte-general', { params: { ciclo } }),
   getDatosGraficas: (ciclo) => 
     api.get('/avances/graficas', { params: { ciclo } }),
-  // NUEVO: Endpoint para recordatorios
   enviarRecordatorios: (ciclo) => 
     api.post('/avances/recordatorios', { ciclo }),
 }
@@ -75,7 +102,7 @@ export const reporteService = {
     }),
 }
 
-// NUEVO: Servicios para Notificaciones
+// Servicios para Notificaciones
 export const notificacionService = {
   enviarRecordatorios: (ciclo) => api.post('/avances/recordatorios', { ciclo }),
   enviarAlertaCoordinadores: (data) => api.post('/notificaciones/alertas', data),
