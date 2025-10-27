@@ -7,7 +7,10 @@ const EvidenciasPage = () => {
   const [evidencias, setEvidencias] = useState([])
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState({})
-  const [showForm, setShowForm] = useState(false)
+  const [showFormModal, setShowFormModal] = useState(false)
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const [showErrorModal, setShowErrorModal] = useState(false)
+  const [modalMessage, setModalMessage] = useState('')
   const [formData, setFormData] = useState({
     nombreCurso: '',
     institucion: '',
@@ -18,6 +21,7 @@ const EvidenciasPage = () => {
     archivo: '',
     observaciones: ''
   })
+  const [subiendo, setSubiendo] = useState(false)
 
   const { user, isCoordinador, isAdmin, isProfesor } = useAuth()
 
@@ -27,7 +31,6 @@ const EvidenciasPage = () => {
 
   const loadEvidencias = async () => {
     try {
-      // El backend ya filtra automáticamente por usuario si es profesor
       const response = await evidenciaService.getAll(filters)
       setEvidencias(response.data)
     } catch (error) {
@@ -39,7 +42,26 @@ const EvidenciasPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    setSubiendo(true)
+
     try {
+      // Validaciones
+      if (!formData.nombreCurso) {
+        throw new Error('El nombre del curso es requerido')
+      }
+      if (!formData.institucion) {
+        throw new Error('La institución es requerida')
+      }
+      if (!formData.fechaInicio || !formData.fechaFin) {
+        throw new Error('Las fechas son requeridas')
+      }
+      if (!formData.horasAcreditadas) {
+        throw new Error('Las horas acreditadas son requeridas')
+      }
+      if (!formData.archivo) {
+        throw new Error('El archivo o enlace es requerido')
+      }
+
       // Para profesores, no enviar el campo profesor (se asigna automáticamente en el backend)
       const dataToSend = isProfesor() ? {
         nombreCurso: formData.nombreCurso,
@@ -63,13 +85,40 @@ const EvidenciasPage = () => {
       }
 
       await evidenciaService.create(dataToSend)
-      setShowForm(false)
+      setShowFormModal(false)
       resetForm()
       loadEvidencias()
-      alert('Evidencia registrada exitosamente')
+      setModalMessage('✅ Evidencia registrada exitosamente y enviada para validación')
+      setShowSuccessModal(true)
     } catch (error) {
-      alert('Error al registrar evidencia: ' + (error.response?.data?.message || error.message))
+      console.error('Error al registrar evidencia:', error)
+      setModalMessage('❌ Error al registrar evidencia: ' + (error.response?.data?.message || error.message))
+      setShowErrorModal(true)
+    } finally {
+      setSubiendo(false)
     }
+  }
+
+  const resetForm = () => {
+    setFormData({
+      profesor: '',
+      nombreCurso: '',
+      institucion: '',
+      fechaInicio: '',
+      fechaFin: '',
+      horasAcreditadas: '',
+      tipoCapacitacion: 'curso',
+      archivo: '',
+      observaciones: ''
+    })
+  }
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
   }
 
   const handleValidar = async (id, estado) => {
@@ -94,24 +143,12 @@ const EvidenciasPage = () => {
         observaciones: observaciones || `Evidencia ${estado}`
       })
       loadEvidencias()
-      alert(`Evidencia ${estado} exitosamente`)
+      setModalMessage(`✅ Evidencia ${estado} exitosamente`)
+      setShowSuccessModal(true)
     } catch (error) {
-      alert('Error al validar evidencia: ' + (error.response?.data?.message || error.message))
+      setModalMessage('❌ Error al validar evidencia: ' + (error.response?.data?.message || error.message))
+      setShowErrorModal(true)
     }
-  }
-
-  const resetForm = () => {
-    setFormData({
-      profesor: '',
-      nombreCurso: '',
-      institucion: '',
-      fechaInicio: '',
-      fechaFin: '',
-      horasAcreditadas: '',
-      tipoCapacitacion: 'curso',
-      archivo: '',
-      observaciones: ''
-    })
   }
 
   const getEstadoColor = (estado) => {
@@ -165,7 +202,7 @@ const EvidenciasPage = () => {
       <header className="evidencias-header">
         <div className="header-content">
           <div>
-            <h1>📁 {isProfesor() ? 'Mis Evidencias' : 'Evidencias de Capacitación'}</h1>
+            <h1> {isProfesor() ? 'Mis Evidencias' : 'Evidencias de Capacitación'}</h1>
             <p>
               {isProfesor() 
                 ? 'Gestión de tus cursos, talleres y formación docente' 
@@ -209,7 +246,7 @@ const EvidenciasPage = () => {
 
       {/* Filtros */}
       <div className="filters-card">
-        <h3>🔍 Filtros y Búsqueda</h3>
+        <h3> Filtros y Búsqueda</h3>
         <div className="filters-grid">
           <select 
             value={filters.estado || ''}
@@ -263,7 +300,7 @@ const EvidenciasPage = () => {
       {/* Botón de nueva evidencia */}
       <div className="actions-bar">
         <button
-          onClick={() => setShowForm(true)}
+          onClick={() => setShowFormModal(true)}
           className="btn-primary"
         >
           + Nueva Evidencia
@@ -273,15 +310,15 @@ const EvidenciasPage = () => {
         </span>
       </div>
 
-      {/* Formulario de nueva evidencia */}
-      {showForm && (
-        <div className="form-modal">
-          <div className="form-container">
-            <div className="form-header">
-              <h3>📝 Registrar Nueva Evidencia</h3>
+      {/* Modal de Formulario */}
+      {showFormModal && (
+        <div className="modal-overlay">
+          <div className="modal-container">
+            <div className="modal-header">
+              <h3> Registrar Nueva Evidencia</h3>
               <button 
                 onClick={() => {
-                  setShowForm(false)
+                  setShowFormModal(false)
                   resetForm()
                 }}
                 className="close-btn"
@@ -289,116 +326,105 @@ const EvidenciasPage = () => {
                 ×
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="evidence-form">
-              <div className="form-grid">
-                {/* Campo profesor solo para coordinadores/admin */}
-                {puedeRegistrarParaOtros() && (
-                  <div className="form-group">
-                    <label>👨‍🏫 Profesor *</label>
-                    <input
-                      type="text"
-                      placeholder="Nombre del profesor"
-                      value={formData.profesor}
-                      onChange={(e) => setFormData(prev => ({ ...prev, profesor: e.target.value }))}
-                      required
-                    />
-                  </div>
-                )}
-
-                <div className="form-group">
-                  <label>📚 Nombre del Curso/Taller *</label>
+            <form onSubmit={handleSubmit} className="evidencia-form-modal">
+              {/* Campo profesor solo para coordinadores/admin */}
+              {puedeRegistrarParaOtros() && (
+                <div className="form-row">
                   <input
                     type="text"
-                    placeholder="Ej: Curso de Innovación Educativa"
-                    value={formData.nombreCurso}
-                    onChange={(e) => setFormData(prev => ({ ...prev, nombreCurso: e.target.value }))}
+                    placeholder=" Profesor *"
+                    name="profesor"
+                    value={formData.profesor}
+                    onChange={handleInputChange}
                     required
                   />
                 </div>
+              )}
 
-                <div className="form-group">
-                  <label>🏛️ Institución *</label>
-                  <input
-                    type="text"
-                    placeholder="Ej: Universidad Nacional"
-                    value={formData.institucion}
-                    onChange={(e) => setFormData(prev => ({ ...prev, institucion: e.target.value }))}
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>🎯 Tipo de Capacitación *</label>
-                  <select
-                    value={formData.tipoCapacitacion}
-                    onChange={(e) => setFormData(prev => ({ ...prev, tipoCapacitacion: e.target.value }))}
-                    required
-                  >
-                    <option value="curso">Curso</option>
-                    <option value="taller">Taller</option>
-                    <option value="diplomado">Diplomado</option>
-                    <option value="seminario">Seminario</option>
-                    <option value="congreso">Congreso</option>
-                    <option value="otro">Otro</option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label>📅 Fecha de Inicio *</label>
-                  <input
-                    type="date"
-                    value={formData.fechaInicio}
-                    onChange={(e) => setFormData(prev => ({ ...prev, fechaInicio: e.target.value }))}
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>📅 Fecha de Fin *</label>
-                  <input
-                    type="date"
-                    value={formData.fechaFin}
-                    onChange={(e) => setFormData(prev => ({ ...prev, fechaFin: e.target.value }))}
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>⏱️ Horas Acreditadas *</label>
-                  <input
-                    type="number"
-                    placeholder="Ej: 40"
-                    value={formData.horasAcreditadas}
-                    onChange={(e) => setFormData(prev => ({ ...prev, horasAcreditadas: e.target.value }))}
-                    required
-                    min="1"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>📎 Archivo o Enlace *</label>
-                  <input
-                    type="text"
-                    placeholder="Nombre del archivo o URL"
-                    value={formData.archivo}
-                    onChange={(e) => setFormData(prev => ({ ...prev, archivo: e.target.value }))}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="form-group full-width">
-                <label>💭 Observaciones</label>
-                <textarea
-                  placeholder="Observaciones adicionales (opcional)"
-                  value={formData.observaciones}
-                  onChange={(e) => setFormData(prev => ({ ...prev, observaciones: e.target.value }))}
-                  rows="3"
+              <div className="form-row">
+                <input
+                  type="text"
+                  placeholder=" Nombre del Curso/Taller *"
+                  name="nombreCurso"
+                  value={formData.nombreCurso}
+                  onChange={handleInputChange}
+                  required
+                />
+                <input
+                  type="text"
+                  placeholder=" Institución *"
+                  name="institucion"
+                  value={formData.institucion}
+                  onChange={handleInputChange}
+                  required
                 />
               </div>
 
+              <div className="form-row">
+                <select
+                  name="tipoCapacitacion"
+                  value={formData.tipoCapacitacion}
+                  onChange={handleInputChange}
+                  required
+                >
+                  <option value="curso"> Curso</option>
+                  <option value="taller"> Taller</option>
+                  <option value="diplomado"> Diplomado</option>
+                  <option value="seminario"> Seminario</option>
+                  <option value="congreso"> Congreso</option>
+                  <option value="otro"> Otro</option>
+                </select>
+                <input
+                  type="number"
+                  placeholder="⏱️ Horas Acreditadas *"
+                  name="horasAcreditadas"
+                  value={formData.horasAcreditadas}
+                  onChange={handleInputChange}
+                  required
+                  min="1"
+                />
+              </div>
+
+              <div className="form-row">
+                <input
+                  type="date"
+                  placeholder=" Fecha de Inicio *"
+                  name="fechaInicio"
+                  value={formData.fechaInicio}
+                  onChange={handleInputChange}
+                  required
+                />
+                <input
+                  type="date"
+                  placeholder=" Fecha de Fin *"
+                  name="fechaFin"
+                  value={formData.fechaFin}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <input
+                  type="text"
+                  placeholder="📎 Archivo o Enlace * (Nombre del archivo o URL)"
+                  name="archivo"
+                  value={formData.archivo}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+
+              <textarea
+                placeholder="💭 Observaciones adicionales (opcional)"
+                name="observaciones"
+                value={formData.observaciones}
+                onChange={handleInputChange}
+                rows="3"
+              />
+
               <div className="form-note">
-                <strong>📝 Nota:</strong> 
+                <strong> Nota:</strong> 
                 {isProfesor() 
                   ? " El sistema asignará automáticamente tu nombre como profesor." 
                   : " Asegúrate de que toda la información sea correcta antes de registrar."
@@ -409,21 +435,60 @@ const EvidenciasPage = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    setShowForm(false)
+                    setShowFormModal(false)
                     resetForm()
                   }}
                   className="btn-secondary"
+                  disabled={subiendo}
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   className="btn-primary"
+                  disabled={subiendo}
                 >
-                  Registrar Evidencia
+                  {subiendo ? (
+                    <>⏳ Registrando...</>
+                  ) : (
+                    <> Registrar Evidencia</>
+                  )}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modales de éxito y error */}
+      {showSuccessModal && (
+        <div className="modal-overlay">
+          <div className="modal-container success-modal">
+            <div className="modal-icon">✅</div>
+            <h3>¡Éxito!</h3>
+            <p>{modalMessage}</p>
+            <button
+              onClick={() => setShowSuccessModal(false)}
+              className="btn-primary"
+            >
+              Aceptar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showErrorModal && (
+        <div className="modal-overlay">
+          <div className="modal-container error-modal">
+            <div className="modal-icon">❌</div>
+            <h3>Error</h3>
+            <p>{modalMessage}</p>
+            <button
+              onClick={() => setShowErrorModal(false)}
+              className="btn-primary"
+            >
+              Aceptar
+            </button>
           </div>
         </div>
       )}
@@ -432,7 +497,7 @@ const EvidenciasPage = () => {
       <div className="evidencias-list">
         {evidencias.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-icon">📁</div>
+            <div className="empty-icon"></div>
             <h3>No hay evidencias {isProfesor() ? 'tuyas' : ''} registradas</h3>
             <p>
               {isProfesor() 
@@ -441,7 +506,7 @@ const EvidenciasPage = () => {
               }
             </p>
             <button
-              onClick={() => setShowForm(true)}
+              onClick={() => setShowFormModal(true)}
               className="btn-primary"
             >
               Registrar Primera Evidencia
@@ -483,23 +548,23 @@ const EvidenciasPage = () => {
                   <div className="card-content">
                     <div className="details-grid">
                       <div className="detail-item">
-                        <strong>⏱️ Horas:</strong> {evidencia.horasAcreditadas}h
+                        <strong> Horas:</strong> {evidencia.horasAcreditadas}h
                       </div>
                       <div className="detail-item">
-                        <strong>🎯 Tipo:</strong> {evidencia.tipoCapacitacion}
+                        <strong> Tipo:</strong> {evidencia.tipoCapacitacion}
                       </div>
                       <div className="detail-item">
-                        <strong>📅 Fecha:</strong> {new Date(evidencia.fechaInicio).toLocaleDateString()} - {new Date(evidencia.fechaFin).toLocaleDateString()}
+                        <strong> Fecha:</strong> {new Date(evidencia.fechaInicio).toLocaleDateString()} - {new Date(evidencia.fechaFin).toLocaleDateString()}
                       </div>
                       <div className="detail-item">
-                        <strong>📎 Archivo:</strong> 
+                        <strong> Archivo:</strong> 
                         <span className="archivo">{evidencia.archivo}</span>
                       </div>
                     </div>
 
                     {evidencia.observaciones && (
                       <div className="observaciones">
-                        <strong>💭 Observaciones:</strong> {evidencia.observaciones}
+                        <strong> Observaciones:</strong> {evidencia.observaciones}
                       </div>
                     )}
 
@@ -510,13 +575,13 @@ const EvidenciasPage = () => {
                           onClick={() => handleValidar(evidencia._id, 'validada')}
                           className="btn btn-success"
                         >
-                          ✅ Validar
+                           Validar
                         </button>
                         <button
                           onClick={() => handleValidar(evidencia._id, 'rechazada')}
                           className="btn btn-danger"
                         >
-                          ❌ Rechazar
+                           Rechazar
                         </button>
                       </div>
                     )}

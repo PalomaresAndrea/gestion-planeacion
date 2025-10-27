@@ -9,9 +9,13 @@ import {
   obtenerEstadisticasProfesor,
   obtenerReporteGeneral,
   buscarEvidencias
-} from '../Controllers/evidenciaController.js';
+} from '../controllers/evidenciaController.js';
+import { autenticar } from '../middlewares/auth.js';
 
 const router = express.Router();
+
+// Aplicar autenticación a TODAS las rutas de evidencias
+router.use(autenticar);
 
 /**
  * @swagger

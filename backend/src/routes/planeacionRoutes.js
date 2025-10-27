@@ -6,10 +6,17 @@ import {
   actualizarPlaneacion,
   revisarPlaneacion,
   obtenerHistorial,
-  obtenerPlaneacionesCicloActual
+  obtenerPlaneacionesCicloActual,
+  upload,
+  descargarArchivo,
+  verArchivo
 } from '../controllers/planeacionController.js';
+import { autenticar } from '../middlewares/auth.js'; // Importar middleware
 
 const router = express.Router();
+
+// Aplicar autenticación a TODAS las rutas de planeaciones
+router.use(autenticar);
 
 /**
  * @swagger
@@ -103,19 +110,31 @@ router.get('/:id', obtenerPlaneacionPorId);
  * @swagger
  * /api/planeaciones:
  *   post:
- *     summary: Crear una nueva planeación didáctica
+ *     summary: Crear una nueva planeación didáctica CON ARCHIVO PDF
  *     tags: [Planeaciones]
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
- *             $ref: '#/components/schemas/Planeacion'
+ *             type: object
+ *             properties:
+ *               profesor:
+ *                 type: string
+ *               materia:
+ *                 type: string
+ *               parcial:
+ *                 type: number
+ *               cicloEscolar:
+ *                 type: string
+ *               archivo:
+ *                 type: string
+ *                 format: binary
  *     responses:
  *       201:
  *         description: Planeación creada correctamente
  */
-router.post('/', crearPlaneacion);
+router.post('/', upload.single('archivo'), crearPlaneacion);
 
 /**
  * @swagger
@@ -165,12 +184,50 @@ router.put('/:id', actualizarPlaneacion);
  *                 enum: [aprobado, rechazado, ajustes_solicitados]
  *               observaciones:
  *                 type: string
- *               coordinadorRevisor:
- *                 type: string
  *     responses:
  *       200:
  *         description: Revisión completada
  */
 router.put('/:id/revisar', revisarPlaneacion);
+
+/**
+ * @swagger
+ * /api/planeaciones/{id}/archivo:
+ *   get:
+ *     summary: Descargar archivo de planeación
+ *     tags: [Planeaciones]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Archivo descargado
+ *       404:
+ *         description: Archivo no encontrado
+ */
+router.get('/:id/archivo', descargarArchivo);
+
+/**
+ * @swagger
+ * /api/planeaciones/{id}/ver:
+ *   get:
+ *     summary: Ver archivo de planeación en el navegador
+ *     tags: [Planeaciones]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Archivo mostrado en navegador
+ *       404:
+ *         description: Archivo no encontrado
+ */
+router.get('/:id/ver', verArchivo);
 
 export default router;

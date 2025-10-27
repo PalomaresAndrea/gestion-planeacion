@@ -8,10 +8,14 @@ import {
   obtenerEstadisticasProfesor,
   obtenerReporteGeneral,
   obtenerDatosGraficas,
-  enviarRecordatorios // NUEVA FUNCIÓN IMPORTADA
+  enviarRecordatorios
 } from '../controllers/avanceController.js';
+import { autenticar } from '../middlewares/auth.js';
 
 const router = express.Router();
+
+// Aplicar autenticación a TODAS las rutas de avances
+router.use(autenticar);
 
 /**
  * @swagger
@@ -171,7 +175,7 @@ router.post('/', crearAvance);
  */
 router.post('/recordatorios', enviarRecordatorios);
 
-// 🧪 RUTA DE PRUEBA - NUEVA
+// 🧪 RUTA DE PRUEBA
 router.post('/test', async (req, res) => {
   try {
     console.log('🧪 TEST endpoint llamado con:', req.body);

@@ -24,7 +24,7 @@ const Layout = ({ children }) => {
   const { user, logout, isCoordinador, isAdmin } = useAuth();
 
   const navItems = [
-    { path: "/", label: "Dashboard", icon: <Home size={18} /> },
+    { path: "/", label: "Inicio", icon: <Home size={18} /> },
     { path: "/planeaciones", label: "Planeaciones", icon: <FileText size={18} /> },
     { path: "/avances", label: "Avances", icon: <BarChart2 size={18} /> },
     { path: "/evidencias", label: "Evidencias", icon: <Folder size={18} /> },

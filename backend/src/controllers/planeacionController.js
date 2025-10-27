@@ -1,24 +1,82 @@
 import Planeacion from '../models/Planeacion.js';
 import notificacionService from '../services/notificacionService.js';
 import Profesor from '../models/Profesor.js';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
 
-// Crear nueva planeación
+// Configurar multer para subida de archivos
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = 'uploads/planeaciones';
+    // Crear directorio si no existe
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    // Nombre único: timestamp + nombre original
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + '-' + file.originalname);
+  }
+});
+
+const fileFilter = (req, file, cb) => {
+  // Solo permitir PDFs
+  if (file.mimetype === 'application/pdf') {
+    cb(null, true);
+  } else {
+    cb(new Error('Solo se permiten archivos PDF'), false);
+  }
+};
+
+export const upload = multer({
+  storage: storage,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB límite
+  }
+});
+
+// Crear nueva planeación CON ARCHIVO
 export const crearPlaneacion = async (req, res) => {
   try {
+    // Verificar si se subió un archivo
+    if (!req.file) {
+      return res.status(400).json({ message: 'Debe subir un archivo PDF' });
+    }
+
+    const planeacionData = {
+      ...req.body,
+      archivo: req.file.filename, // Guardar nombre del archivo
+      archivoOriginal: req.file.originalname // Guardar nombre original
+    };
+
     // Para profesores, asignar automáticamente su usuario_id
     if (req.usuario.rol === 'profesor') {
       const perfilProfesor = await Profesor.findOne({ usuario: req.usuario._id });
       if (!perfilProfesor) {
+        // Eliminar archivo subido si hay error
+        fs.unlinkSync(req.file.path);
         return res.status(404).json({ message: 'Perfil de profesor no encontrado' });
       }
-      req.body.usuario_id = req.usuario._id;
-      req.body.profesor = req.usuario.nombre; // Usar el nombre del usuario autenticado
+      planeacionData.usuario_id = req.usuario._id;
+      planeacionData.profesor = req.usuario.nombre;
     }
 
-    const nueva = new Planeacion(req.body);
+    const nueva = new Planeacion(planeacionData);
     await nueva.save();
-    res.status(201).json(nueva);
+    
+    res.status(201).json({
+      message: 'Planeación creada exitosamente',
+      planeacion: nueva
+    });
   } catch (error) {
+    // Eliminar archivo si hay error
+    if (req.file) {
+      fs.unlinkSync(req.file.path);
+    }
     res.status(500).json({ message: error.message });
   }
 };
@@ -112,7 +170,7 @@ export const revisarPlaneacion = async (req, res) => {
     );
 
     // 📧 ENVIAR NOTIFICACIÓN POR EMAIL
-    if (estado === 'aprobado' || estado === 'rechazado') {
+    if (estado === 'aprobado' || estado === 'rechazado' || estado === 'ajustes_solicitados') {
       try {
         await notificacionService.notificarRevisionPlaneacion(
           actualizada, 
@@ -174,6 +232,70 @@ export const obtenerPlaneacionesCicloActual = async (req, res) => {
     const planeaciones = await Planeacion.find(filtro).sort({ fechaSubida: -1 });
 
     res.json(planeaciones);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Servir archivos de planeaciones
+export const descargarArchivo = async (req, res) => {
+  try {
+    const planeacion = await Planeacion.findById(req.params.id);
+    if (!planeacion) {
+      return res.status(404).json({ message: 'Planeación no encontrada' });
+    }
+
+    // Verificar permisos
+    if (req.usuario.rol === 'profesor' && planeacion.usuario_id.toString() !== req.usuario._id.toString()) {
+      return res.status(403).json({ message: 'No tienes permisos para ver este archivo' });
+    }
+
+    const filePath = path.join('uploads/planeaciones', planeacion.archivo);
+    
+    // Verificar que el archivo existe
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ message: 'Archivo no encontrado' });
+    }
+
+    // Enviar archivo
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${planeacion.archivoOriginal || planeacion.archivo}"`);
+    
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Ver archivo en el navegador
+export const verArchivo = async (req, res) => {
+  try {
+    const planeacion = await Planeacion.findById(req.params.id);
+    if (!planeacion) {
+      return res.status(404).json({ message: 'Planeación no encontrada' });
+    }
+
+    // Verificar permisos
+    if (req.usuario.rol === 'profesor' && planeacion.usuario_id.toString() !== req.usuario._id.toString()) {
+      return res.status(403).json({ message: 'No tienes permisos para ver este archivo' });
+    }
+
+    const filePath = path.join('uploads/planeaciones', planeacion.archivo);
+    
+    // Verificar que el archivo existe
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ message: 'Archivo no encontrado' });
+    }
+
+    // Enviar archivo para visualización en navegador
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${planeacion.archivoOriginal || planeacion.archivo}"`);
+    
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
+
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

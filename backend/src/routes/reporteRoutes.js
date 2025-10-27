@@ -4,8 +4,12 @@ import {
   obtenerReportePorProfesor,
   exportarReporte
 } from '../controllers/reporteController.js';
+import { autenticar } from '../middlewares/auth.js';
 
 const router = express.Router();
+
+// Aplicar autenticación a TODAS las rutas de reportes
+router.use(autenticar);
 
 /**
  * @swagger

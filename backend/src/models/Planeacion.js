@@ -27,6 +27,10 @@ const planeacionSchema = new mongoose.Schema({
     type: String,
     required: true 
   },
+  archivoOriginal: {
+    type: String,
+    required: true
+  },
   estado: { 
     type: String, 
     enum: ['pendiente', 'aprobado', 'rechazado', 'ajustes_solicitados'], 
@@ -47,6 +51,11 @@ const planeacionSchema = new mongoose.Schema({
     type: Date, 
     default: Date.now 
   },
+  usuario_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Usuario',
+    required: true
+  }
 }, { timestamps: true });
 
 export default mongoose.model('Planeacion', planeacionSchema, 'planeaciones');

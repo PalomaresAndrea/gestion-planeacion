@@ -183,7 +183,7 @@ const AvancesPage = () => {
       <header className="avances-header">
         <div className="header-content">
           <div>
-            <h1>📊 {isProfesor() ? 'Mis Avances' : 'Control de Avances'}</h1>
+            <h1> {isProfesor() ? 'Mis Avances' : 'Control de Avances'}</h1>
             <p>
               {isProfesor() 
                 ? 'Seguimiento de tu avance académico por parcial' 
@@ -212,7 +212,7 @@ const AvancesPage = () => {
                 <>✅ Enviado</>
               ) : (
                 <>
-                  ⏰ Recordatorios
+                   Recordatorios
                   <span className="badge">{avancesPendientes}</span>
                 </>
               )}
@@ -242,7 +242,7 @@ const AvancesPage = () => {
 
       {puedeEnviarRecordatorios() && avancesPendientes > 0 && !recordatorioEnviado && (
         <div className="alert-warning">
-          <span>⏰</span>
+          <span></span>
           <div>
             <strong>{avancesPendientes} avance(s) pendiente(s)</strong>
             <div>{profesoresConPendientes.length} profesor(es) requieren seguimiento</div>
@@ -252,7 +252,7 @@ const AvancesPage = () => {
 
       {isProfesor() && avancesPendientes > 0 && (
         <div className="alert-info">
-          <span>ℹ️</span>
+          <span></span>
           <div>
             <strong>Tienes {avancesPendientes} avance(s) pendiente(s)</strong>
             <div>Completa tus avances para mantener tu progreso actualizado</div>
@@ -262,7 +262,7 @@ const AvancesPage = () => {
 
       {/* Filtros */}
       <div className="filters-card">
-        <h3>🔍 Filtros</h3>
+        <h3> Filtros</h3>
         <div className="filters-grid">
           <select 
             value={filters.cumplimiento || ''}
@@ -315,7 +315,7 @@ const AvancesPage = () => {
         <div className="modal-overlay">
           <div className="modal-container">
             <div className="modal-header">
-              <h3>📝 Registrar Nuevo Avance</h3>
+              <h3> Registrar Nuevo Avance</h3>
               <button 
                 onClick={() => {
                   setShowFormModal(false)
@@ -361,7 +361,7 @@ const AvancesPage = () => {
 
               {/* Temas Planeados */}
               <div className="form-section">
-                <label>📋 Temas Planeados *</label>
+                <label> Temas Planeados *</label>
                 {formData.temasPlaneados.map((tema, index) => (
                   <div key={index} className="input-group">
                     <input
@@ -423,7 +423,7 @@ const AvancesPage = () => {
 
               {/* Actividades Realizadas */}
               <div className="form-section">
-                <label>🎯 Actividades Realizadas</label>
+                <label> Actividades Realizadas</label>
                 {formData.actividadesRealizadas.map((actividad, index) => (
                   <div key={index} className="input-group">
                     <input
@@ -453,21 +453,21 @@ const AvancesPage = () => {
               </div>
 
               <textarea
-                placeholder="⚠️ Dificultades encontradas (opcional)"
+                placeholder=" Dificultades encontradas (opcional)"
                 value={formData.dificultades}
                 onChange={(e) => setFormData(prev => ({ ...prev, dificultades: e.target.value }))}
                 rows="3"
               />
 
               <textarea
-                placeholder="💭 Observaciones adicionales (opcional)"
+                placeholder=" Observaciones adicionales (opcional)"
                 value={formData.observaciones}
                 onChange={(e) => setFormData(prev => ({ ...prev, observaciones: e.target.value }))}
                 rows="3"
               />
 
               <div className="form-note">
-                <strong>📝 Nota:</strong> El porcentaje de avance y cumplimiento se calcularán automáticamente 
+                <strong> Nota:</strong> El porcentaje de avance y cumplimiento se calcularán automáticamente 
                 en base a los temas planeados vs temas cubiertos.
                 {isProfesor() && " El sistema asignará automáticamente tu nombre como profesor."}
               </div>

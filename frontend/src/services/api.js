@@ -38,7 +38,7 @@ api.interceptors.response.use(
   }
 )
 
-// Servicios para Auth (NUEVO)
+// Servicios para Auth
 export const authService = {
   login: (credentials) => api.post('/auth/login', credentials),
   registrar: (userData) => api.post('/auth/registrar', userData),
@@ -46,16 +46,26 @@ export const authService = {
   actualizarPerfil: (userData) => api.put('/auth/perfil', userData),
 }
 
-// Servicios para Planeaciones
+// Servicios para Planeaciones (ACTUALIZADOS CON SUBIDA DE ARCHIVOS)
 export const planeacionService = {
   getAll: (filters = {}) => api.get('/planeaciones', { params: filters }),
   getById: (id) => api.get(`/planeaciones/${id}`),
-  create: (data) => api.post('/planeaciones', data),
+  create: (formData) => api.post('/planeaciones', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  }),
   update: (id, data) => api.put(`/planeaciones/${id}`, data),
   revisar: (id, data) => api.put(`/planeaciones/${id}/revisar`, data),
   getCicloActual: () => api.get('/planeaciones/ciclo-actual'),
   getHistorial: (profesor, materia) => 
     api.get('/planeaciones/historial', { params: { profesor, materia } }),
+  descargarArchivo: (id) => api.get(`/planeaciones/${id}/archivo`, {
+    responseType: 'blob'
+  }),
+  verArchivo: (id) => api.get(`/planeaciones/${id}/ver`, {
+    responseType: 'blob'
+  })
 }
 
 // Servicios para Avances
