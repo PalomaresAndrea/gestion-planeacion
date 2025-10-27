@@ -232,7 +232,7 @@ export const enviarRecordatorios = async (req, res) => {
     for (const profesorData of avancesPendientes) {
       try {
         // En un sistema real, obtendrías el email del profesor de la base de datos
-        const profesorEmail = 'luisfernandoma94@gmail.com';
+        const profesorEmail = 'palomaresschoenstantt@gmail.com';
         
         console.log(`📨 Enviando recordatorio a: ${profesorData._id} (${profesorEmail})`);
         
