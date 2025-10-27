@@ -45,6 +45,34 @@ const authService = {
     }
   },
 
+  // Obtener todos los usuarios (solo admin)
+  obtenerUsuarios: async () => {
+    try {
+      const response = await api.get('/auth/usuarios');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Error de conexión' };
+    }
+  },
+  actualizarUsuario: async (userId, userData) => {
+  try {
+    const response = await api.put(`/auth/usuarios/${userId}`, userData);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Error de conexión' };
+  }
+},
+
+// Eliminar usuario
+eliminarUsuario: async (userId) => {
+  try {
+    const response = await api.delete(`/auth/usuarios/${userId}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Error de conexión' };
+  }
+},
+
   // Cerrar sesión
   logout: () => {
     localStorage.removeItem('token');
@@ -68,5 +96,7 @@ const authService = {
     return localStorage.getItem('token');
   }
 };
+
+
 
 export default authService;

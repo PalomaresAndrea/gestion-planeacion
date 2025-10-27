@@ -13,7 +13,7 @@ import avanceRoutes from './src/routes/avanceRoutes.js';
 import evidenciaRoutes from './src/routes/evidenciaRoutes.js';
 import geolocalizacionRoutes from './src/routes/geolocalizacionRoutes.js';
 import reporteRoutes from './src/routes/reporteRoutes.js';
-import authRoutes from './src/routes/authRoutes.js'; // ✅ RUTA FALTANTE AGREGADA
+import authRoutes from './src/routes/authRoutes.js';
 
 dotenv.config();
 const app = express();
@@ -47,7 +47,7 @@ app.use('/api/avances', avanceRoutes);
 app.use('/api/evidencias', evidenciaRoutes);
 app.use("/api/geolocalizacion", geolocalizacionRoutes);
 app.use('/api/reportes', reporteRoutes);
-app.use('/api/auth', authRoutes); // ✅ RUTA FALTANTE AGREGADA
+app.use('/api/auth', authRoutes); // ✅ Esta línea ya incluye todas las rutas de auth
 
 // Ruta de prueba
 app.get('/', (req, res) => {
@@ -71,9 +71,11 @@ app.use((req, res) => {
     message: `Ruta no encontrada: ${req.method} ${req.originalUrl}`,
     availableRoutes: [
       'POST   /api/auth/registro',
+      'POST   /api/auth/registrar', // Agregar esta ruta
       'POST   /api/auth/login',
       'GET    /api/auth/perfil',
       'PUT    /api/auth/perfil',
+      'GET    /api/auth/usuarios', // Agregar esta ruta
       'GET    /api/planeaciones',
       'POST   /api/planeaciones', 
       'GET    /api/planeaciones/ciclo-actual',

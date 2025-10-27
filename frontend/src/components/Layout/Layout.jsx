@@ -11,6 +11,7 @@ import {
   User,
   LogOut,
   Settings,
+  Users,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import "./LayoutStyles.css";
@@ -31,11 +32,20 @@ const Layout = ({ children }) => {
   ];
 
   // Solo coordinadores y admin pueden ver reportes
-  if (isCoordinador()) {
+  if (isCoordinador() || isAdmin()) {
     navItems.push({
       path: "/reportes", 
       label: "Reportes", 
       icon: <ClipboardList size={18} />
+    });
+  }
+
+  // Solo admin puede ver gestión de usuarios
+  if (isAdmin()) {
+    navItems.push({
+      path: "/usuarios",
+      label: "Gestión de Usuarios",
+      icon: <Users size={18} />
     });
   }
 
@@ -68,7 +78,7 @@ const Layout = ({ children }) => {
       {/* Sidebar */}
       <aside className={`sidebar-modern ${sidebarOpen ? "open" : "closed"}`}>
         <div className="sidebar-header">
-          <h2 className="sidebar-title"> Sistema</h2>
+          <h2 className="sidebar-title">Sistema</h2>
           <button
             className="toggle-btn"
             onClick={() => setSidebarOpen(!sidebarOpen)}

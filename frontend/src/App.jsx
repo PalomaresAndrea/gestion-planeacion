@@ -1,6 +1,6 @@
 import React from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
-import { AuthProvider, useAuth } from './context/AuthContext'
+import { AuthProvider, useAuth } from './context/AuthContext' // Importar desde export nombrados
 import Layout from './components/Layout/Layout'
 import Dashboard from './pages/Dashboard'
 import PlaneacionesPage from './pages/PlaneacionesPage'
@@ -8,6 +8,7 @@ import AvancesPage from './pages/AvancesPage'
 import EvidenciasPage from './pages/EvidenciasPage'
 import ReportesPage from './pages/ReportesPage'
 import Login from './pages/Login'
+import UsuariosPage from './pages/UsuariosPage'
 import './App.css'
 
 // Componente para rutas protegidas
@@ -73,6 +74,11 @@ function AppContent() {
         <Route path="/reportes" element={
           <ProtectedRoute>
             <ReportesPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/usuarios" element={
+          <ProtectedRoute>
+            <UsuariosPage />
           </ProtectedRoute>
         } />
         <Route path="/login" element={

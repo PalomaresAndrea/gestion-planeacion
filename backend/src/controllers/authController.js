@@ -67,6 +67,54 @@ export const registrar = async (req, res) => {
   }
 };
 
+// Obtener todos los usuarios (solo admin)
+export const obtenerUsuarios = async (req, res) => {
+  try {
+    console.log('🔍 Obteniendo lista de usuarios...');
+    
+    // Buscar todos los usuarios activos
+    const usuarios = await Usuario.find({ activo: true })
+      .select('-password') // Excluir contraseñas
+      .sort({ createdAt: -1 });
+
+    console.log(`📊 Usuarios encontrados: ${usuarios.length}`);
+
+    // Obtener perfiles extendidos para profesores
+    const usuariosConPerfil = await Promise.all(
+      usuarios.map(async (usuario) => {
+        const usuarioData = usuario.toObject();
+        
+        if (usuario.rol === 'profesor') {
+          const perfilProfesor = await Profesor.findOne({ usuario: usuario._id });
+          if (perfilProfesor) {
+            usuarioData.perfilProfesor = {
+              numeroEmpleado: perfilProfesor.numeroEmpleado,
+              departamento: perfilProfesor.departamento,
+              telefono: perfilProfesor.telefono,
+              especialidad: perfilProfesor.especialidad,
+              materias: perfilProfesor.materias
+            };
+          }
+        }
+        
+        return usuarioData;
+      })
+    );
+
+    res.json({
+      message: 'Usuarios obtenidos exitosamente',
+      usuarios: usuariosConPerfil,
+      total: usuariosConPerfil.length
+    });
+  } catch (error) {
+    console.error('❌ Error obteniendo usuarios:', error);
+    res.status(500).json({
+      message: 'Error al obtener usuarios',
+      error: error.message
+    });
+  }
+};
+
 // Login de usuario
 export const login = async (req, res) => {
   try {

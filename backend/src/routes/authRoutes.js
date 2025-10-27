@@ -3,9 +3,10 @@ import {
   registrar,
   login,
   obtenerPerfil,
-  actualizarPerfil
+  actualizarPerfil,
+  obtenerUsuarios
 } from '../controllers/authController.js';
-import { autenticar } from '../middlewares/auth.js';
+import { autenticar, esAdmin } from '../middlewares/auth.js';
 
 const router = express.Router();
 
@@ -18,7 +19,7 @@ const router = express.Router();
 
 /**
  * @swagger
- * /api/auth/registro:
+ * /api/auth/registrar:
  *   post:
  *     summary: Registrar nuevo usuario
  *     tags: [Autenticación]
@@ -32,8 +33,6 @@ const router = express.Router();
  *               - email
  *               - password
  *               - nombre
- *               - numeroEmpleado
- *               - departamento
  *             properties:
  *               email:
  *                 type: string
@@ -45,7 +44,58 @@ const router = express.Router();
  *                 type: string
  *               rol:
  *                 type: string
- *                 enum: [profesor, admin]
+ *                 enum: [profesor, admin, coordinador]
+ *                 default: profesor
+ *               numeroEmpleado:
+ *                 type: string
+ *               departamento:
+ *                 type: string
+ *               telefono:
+ *                 type: string
+ *               especialidad:
+ *                 type: string
+ *               materias:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       201:
+ *         description: Usuario registrado exitosamente
+ *       400:
+ *         description: Error en la solicitud
+ *       500:
+ *         description: Error del servidor
+ */
+router.post('/registrar', registrar);
+
+/**
+ * @swagger
+ * /api/auth/registro:
+ *   post:
+ *     summary: Registrar nuevo usuario (alias)
+ *     tags: [Autenticación]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *               - nombre
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               password:
+ *                 type: string
+ *                 format: password
+ *               nombre:
+ *                 type: string
+ *               rol:
+ *                 type: string
+ *                 enum: [profesor, admin, coordinador]
  *                 default: profesor
  *               numeroEmpleado:
  *                 type: string
@@ -68,6 +118,26 @@ const router = express.Router();
  *         description: Error del servidor
  */
 router.post('/registro', registrar);
+
+/**
+ * @swagger
+ * /api/auth/usuarios:
+ *   get:
+ *     summary: Obtener todos los usuarios (solo admin)
+ *     tags: [Autenticación]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de usuarios obtenida exitosamente
+ *       401:
+ *         description: No autorizado
+ *       403:
+ *         description: No tiene permisos de administrador
+ *       500:
+ *         description: Error del servidor
+ */
+router.get('/usuarios', autenticar, esAdmin, obtenerUsuarios);
 
 /**
  * @swagger

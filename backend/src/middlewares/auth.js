@@ -3,51 +3,78 @@ import Usuario from '../models/Usuario.js';
 
 export const autenticar = async (req, res, next) => {
   try {
-    // Obtener token del header
-    const token = req.header('Authorization')?.replace('Bearer ', '');
-    
+    let token;
+
+    // Verificar si el token está en el header
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+      token = req.headers.authorization.split(' ')[1];
+    }
+
     if (!token) {
       return res.status(401).json({
-        message: 'Acceso denegado. No hay token proporcionado.'
+        message: 'No autorizado, token no proporcionado'
       });
     }
 
-    // Verificar token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secreto_backup');
-    
-    // Buscar usuario
-    const usuario = await Usuario.findById(decoded.id).select('-password');
-    if (!usuario || !usuario.activo) {
+    try {
+      // Verificar token
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secreto_backup');
+      
+      // Obtener usuario del token
+      const usuario = await Usuario.findById(decoded.id).select('-password');
+      
+      if (!usuario || !usuario.activo) {
+        return res.status(401).json({
+          message: 'Token inválido, usuario no existe o está inactivo'
+        });
+      }
+
+      req.usuario = usuario;
+      next();
+    } catch (error) {
+      console.error('Error verificando token:', error);
       return res.status(401).json({
-        message: 'Token inválido o usuario inactivo.'
+        message: 'Token inválido'
       });
     }
-
-    // Agregar usuario al request
-    req.usuario = usuario;
-    next();
   } catch (error) {
-    console.error('Error en autenticación:', error);
-    res.status(401).json({
-      message: 'Token inválido.'
+    console.error('Error en middleware de autenticación:', error);
+    res.status(500).json({
+      message: 'Error del servidor en autenticación'
     });
   }
 };
 
-// Middleware opcional (no bloquea si no hay token)
-export const autenticarOpcional = async (req, res, next) => {
+// Middleware para verificar si es administrador
+export const esAdmin = (req, res, next) => {
   try {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
-    
-    if (token) {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secreto_backup');
-      const usuario = await Usuario.findById(decoded.id).select('-password');
-      if (usuario && usuario.activo) {
-        req.usuario = usuario;
-      }
+    if (req.usuario.rol !== 'admin') {
+      return res.status(403).json({
+        message: 'Acceso denegado. Se requieren permisos de administrador.'
+      });
     }
     next();
   } catch (error) {
-    next(); // Continuar sin autenticación
+    console.error('Error en middleware esAdmin:', error);
+    res.status(500).json({
+      message: 'Error del servidor en verificación de permisos'
+    });
+  }
+};
+
+// Middleware para verificar si es coordinador o admin
+export const esCoordinadorOAdmin = (req, res, next) => {
+  try {
+    if (!['coordinador', 'admin'].includes(req.usuario.rol)) {
+      return res.status(403).json({
+        message: 'Acceso denegado. Se requieren permisos de coordinador o administrador.'
+      });
+    }
+    next();
+  } catch (error) {
+    console.error('Error en middleware esCoordinadorOAdmin:', error);
+    res.status(500).json({
+      message: 'Error del servidor en verificación de permisos'
+    });
   }
 };
