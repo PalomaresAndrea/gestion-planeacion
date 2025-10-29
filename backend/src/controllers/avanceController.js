@@ -1,22 +1,35 @@
+// Importar modelo Avance
 import Avance from '../models/Avance.js';
 
-//  Crear avance
+/**
+ * Crear un nuevo avance
+ */
 export const crearAvance = async (req, res) => {
   try {
-    const nuevo = new Avance(req.body);
-    await nuevo.save();
-    res.status(201).json(nuevo);
+    // Validar campos obligatorios
+    if (!req.body.profesor || !req.body.materia) {
+      return res.status(400).json({ message: 'Faltan campos obligatorios: profesor o materia' });
+    }
+
+    const nuevoAvance = new Avance(req.body);
+    await nuevoAvance.save();
+    res.status(201).json(nuevoAvance);
   } catch (error) {
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ message: error.message });
+    }
     res.status(500).json({ message: error.message });
   }
 };
 
-//  Obtener todos los avances (con filtros)
+/**
+ * Obtener todos los avances con filtros opcionales
+ */
 export const obtenerAvances = async (req, res) => {
   try {
     const { profesor, materia, parcial, cumplimiento, ciclo } = req.query;
     const filtro = {};
-    
+
     if (profesor) filtro.profesor = profesor;
     if (materia) filtro.materia = materia;
     if (parcial) filtro.parcial = parseInt(parcial);
@@ -30,34 +43,43 @@ export const obtenerAvances = async (req, res) => {
   }
 };
 
-//  Obtener avance por ID
+/**
+ * Obtener un avance por ID
+ */
 export const obtenerAvancePorId = async (req, res) => {
   try {
-    const avance = await Avance.findById(req.params.id);
-    if (!avance) {
+    const avanceEncontrado = await Avance.findById(req.params.id);
+    if (!avanceEncontrado) {
       return res.status(404).json({ message: 'Avance no encontrado' });
     }
-    res.json(avance);
+    res.json(avanceEncontrado);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-//  Actualizar avance por ID
+/**
+ * Actualizar un avance por ID
+ */
 export const actualizarAvance = async (req, res) => {
   try {
-    const actualizado = await Avance.findByIdAndUpdate(
-      req.params.id, 
-      req.body, 
+    const avanceActualizado = await Avance.findByIdAndUpdate(
+      req.params.id,
+      req.body,
       { new: true, runValidators: true }
     );
-    res.json(actualizado);
+    res.json(avanceActualizado);
   } catch (error) {
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ message: error.message });
+    }
     res.status(500).json({ message: error.message });
   }
 };
 
-//  Eliminar avance
+/**
+ * Eliminar un avance por ID
+ */
 export const eliminarAvance = async (req, res) => {
   try {
     await Avance.findByIdAndDelete(req.params.id);
@@ -67,7 +89,9 @@ export const eliminarAvance = async (req, res) => {
   }
 };
 
-//  Estadísticas de cumplimiento por profesor
+/**
+ * Obtener estadísticas de cumplimiento por profesor
+ */
 export const obtenerEstadisticasProfesor = async (req, res) => {
   try {
     const { profesor, ciclo } = req.query;
@@ -75,13 +99,15 @@ export const obtenerEstadisticasProfesor = async (req, res) => {
     if (ciclo) filtro.cicloEscolar = ciclo;
 
     const avances = await Avance.find(filtro);
-    
+
     const estadisticas = {
       total: avances.length,
       cumplido: avances.filter(a => a.cumplimiento === 'cumplido').length,
       parcial: avances.filter(a => a.cumplimiento === 'parcial').length,
       noCumplido: avances.filter(a => a.cumplimiento === 'no cumplido').length,
-      promedioPorcentaje: avances.reduce((acc, curr) => acc + curr.porcentajeAvance, 0) / avances.length,
+      promedioPorcentaje: avances.length 
+        ? avances.reduce((acc, curr) => acc + curr.porcentajeAvance, 0) / avances.length 
+        : 0,
       porMateria: {},
       porParcial: {
         1: avances.filter(a => a.parcial === 1),
@@ -104,14 +130,15 @@ export const obtenerEstadisticasProfesor = async (req, res) => {
   }
 };
 
-//  Reporte general de cumplimiento
+/**
+ * Reporte general de cumplimiento
+ */
 export const obtenerReporteGeneral = async (req, res) => {
   try {
     const { ciclo } = req.query;
     const filtro = ciclo ? { cicloEscolar: ciclo } : {};
-
     const avances = await Avance.find(filtro);
-    
+
     const reporte = {
       totalAvances: avances.length,
       cumplimientoGeneral: {
@@ -126,7 +153,9 @@ export const obtenerReporteGeneral = async (req, res) => {
         2: avances.filter(a => a.parcial === 2),
         3: avances.filter(a => a.parcial === 3)
       },
-      promedioGlobal: avances.reduce((acc, curr) => acc + curr.porcentajeAvance, 0) / avances.length
+      promedioGlobal: avances.length 
+        ? avances.reduce((acc, curr) => acc + curr.porcentajeAvance, 0) / avances.length 
+        : 0
     };
 
     // Agrupar por profesor
@@ -144,11 +173,12 @@ export const obtenerReporteGeneral = async (req, res) => {
       reporte.porProfesor[avance.profesor][avance.cumplimiento]++;
     });
 
-    // Calcular promedios por profesor
+    // Calcular promedio por profesor
     Object.keys(reporte.porProfesor).forEach(profesor => {
       const profAvances = avances.filter(a => a.profesor === profesor);
-      reporte.porProfesor[profesor].promedioPorcentaje = 
-        profAvances.reduce((acc, curr) => acc + curr.porcentajeAvance, 0) / profAvances.length;
+      reporte.porProfesor[profesor].promedioPorcentaje = profAvances.length
+        ? profAvances.reduce((acc, curr) => acc + curr.porcentajeAvance, 0) / profAvances.length
+        : 0;
     });
 
     // Agrupar por materia
@@ -171,12 +201,13 @@ export const obtenerReporteGeneral = async (req, res) => {
   }
 };
 
-//  Datos para gráficas
+/**
+ * Datos para gráficas
+ */
 export const obtenerDatosGraficas = async (req, res) => {
   try {
     const { ciclo } = req.query;
     const filtro = ciclo ? { cicloEscolar: ciclo } : {};
-
     const avances = await Avance.find(filtro);
 
     const datos = {
@@ -196,9 +227,9 @@ export const obtenerDatosGraficas = async (req, res) => {
           avances.filter(a => a.parcial === 3).length
         ]
       },
-      porcentajePromedio: Math.round(
-        avances.reduce((acc, curr) => acc + curr.porcentajeAvance, 0) / avances.length
-      )
+      porcentajePromedio: avances.length 
+        ? Math.round(avances.reduce((acc, curr) => acc + curr.porcentajeAvance, 0) / avances.length)
+        : 0
     };
 
     res.json(datos);
