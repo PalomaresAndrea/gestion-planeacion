@@ -1,10 +1,11 @@
 name: Fullstack CI
 
 on:
+  workflow_dispatch:
   push:
-    branches: ["main"]
+    branches: ["main", "Andrea"]
   pull_request:
-    branches: ["main"]
+    branches: ["main", "Andrea"]
 
 jobs:
   backend:
@@ -15,28 +16,30 @@ jobs:
         working-directory: ./backend
     steps:
       - name: Checkout código
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Configurar Node
-        uses: actions/setup-node@v3
+      - name: Usar Node 18
+        uses: actions/setup-node@v4
         with:
           node-version: "18"
           cache: "npm"
 
-      - name: Instalar dependencias
+      - name: Instalar dependencias del backend
         run: npm install
 
-      - name: Ejecutar tests (si tienes)
+      - name: Ejecutar tests del backend (si existen)
         run: npm test --if-present
 
-      - name: Analizar lint (si usas)
+      - name: Lint backend (si existe script)
         run: npm run lint --if-present
 
-      - name: Crear carpeta build backend
-        run: mkdir -p ../build/backend && cp -R . ../build/backend
+      - name: Copiar backend build (si aplica)
+        run: |
+          mkdir -p ../build/backend
+          cp -R . ../build/backend
 
       - name: Guardar artefacto backend
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: backend-build
           path: build/backend
@@ -50,22 +53,16 @@ jobs:
         working-directory: ./frontend
     steps:
       - name: Checkout código
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Configurar Node
-        uses: actions/setup-node@v3
+      - name: Usar Node 18
+        uses: actions/setup-node@v4
         with:
           node-version: "18"
           cache: "npm"
 
-      - name: Instalar dependencias
+      - name: Instalar dependencias del frontend
         run: npm install
 
-      - name: Build Vite
-        run: npm run build
-
-      - name: Guardar artefacto frontend
-        uses: actions/upload-artifact@v3
-        with:
-          name: frontend-build
-          path: dist
+      - name: Build de producción Vite
+        ru
