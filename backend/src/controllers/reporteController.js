@@ -1,6 +1,9 @@
 import Planeacion from '../models/Planeacion.js';
 import Avance from '../models/Avance.js';
 import Evidencia from '../models/Evidencia.js';
+import ExcelJS from 'exceljs';
+import PDFDocument from 'pdfkit';
+import stream from 'stream';
 
 //  Reporte institucional consolidado
 export const obtenerReporteInstitucional = async (req, res) => {
@@ -17,14 +20,14 @@ export const obtenerReporteInstitucional = async (req, res) => {
 
     // Calcular porcentaje de cumplimiento de planeaciones
     const planeacionesAprobadas = planeaciones.filter(p => p.estado === 'aprobado').length;
-    const porcentajeAprobacionPlaneaciones = planeaciones.length > 0 
-      ? (planeacionesAprobadas / planeaciones.length * 100).toFixed(2) 
+    const porcentajeAprobacionPlaneaciones = planeaciones.length > 0
+      ? (planeacionesAprobadas / planeaciones.length * 100).toFixed(2)
       : 0;
 
     // Calcular cumplimiento de avances
     const avancesCumplidos = avances.filter(a => a.cumplimiento === 'cumplido').length;
-    const porcentajeCumplimientoAvances = avances.length > 0 
-      ? (avancesCumplidos / avances.length * 100).toFixed(2) 
+    const porcentajeCumplimientoAvances = avances.length > 0
+      ? (avancesCumplidos / avances.length * 100).toFixed(2)
       : 0;
 
     // Calcular horas de capacitación
@@ -59,7 +62,7 @@ export const obtenerReporteInstitucional = async (req, res) => {
         parcial: avances.filter(a => a.cumplimiento === 'parcial').length,
         noCumplido: avances.filter(a => a.cumplimiento === 'no cumplido').length,
         porcentajeCumplimiento: parseFloat(porcentajeCumplimientoAvances),
-        porcentajePromedio: avances.length > 0 
+        porcentajePromedio: avances.length > 0
           ? (avances.reduce((acc, curr) => acc + curr.porcentajeAvance, 0) / avances.length).toFixed(2)
           : 0
       },
@@ -69,7 +72,7 @@ export const obtenerReporteInstitucional = async (req, res) => {
         cursosPendientes: evidencias.filter(e => e.estado === 'pendiente').length,
         cursosRechazadas: evidencias.filter(e => e.estado === 'rechazada').length,
         totalHorasAcreditadas: totalHorasCapacitacion,
-        promedioHorasPorProfesor: evidencias.length > 0 
+        promedioHorasPorProfesor: evidencias.length > 0
           ? (totalHorasCapacitacion / [...new Set(evidencias.map(e => e.profesor))].length).toFixed(2)
           : 0,
         distribucionPorTipo: evidencias.reduce((acc, curr) => {
@@ -103,7 +106,7 @@ export const obtenerReporteInstitucional = async (req, res) => {
 export const obtenerReportePorProfesor = async (req, res) => {
   try {
     const { profesor, ciclo } = req.query;
-    
+
     if (!profesor) {
       return res.status(400).json({ message: 'Se requiere el parámetro profesor' });
     }
@@ -142,7 +145,7 @@ export const obtenerReportePorProfesor = async (req, res) => {
           acc[curr.cumplimiento] = (acc[curr.cumplimiento] || 0) + 1;
           return acc;
         }, {}),
-        porcentajePromedio: avances.length > 0 
+        porcentajePromedio: avances.length > 0
           ? (avances.reduce((acc, curr) => acc + curr.porcentajeAvance, 0) / avances.length).toFixed(2)
           : 0,
         porMateria: avances.reduce((acc, curr) => {
@@ -173,23 +176,135 @@ export const obtenerReportePorProfesor = async (req, res) => {
 // 📤 Exportar reporte (placeholder para PDF/Excel)
 export const exportarReporte = async (req, res) => {
   try {
-    const { formato, tipo, ciclo } = req.query;
-    
-    // Por ahora solo retornamos JSON, pero aquí se integraría la librería de exportación
-    if (formato === 'excel') {
-      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      res.setHeader('Content-Disposition', `attachment; filename=reporte-${tipo}-${ciclo || 'general'}.xlsx`);
-      return res.json({ message: 'Exportación Excel - Implementar con exceljs' });
-    }
-    
-    if (formato === 'pdf') {
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename=reporte-${tipo}-${ciclo || 'general'}.pdf`);
-      return res.json({ message: 'Exportación PDF - Implementar con pdfkit' });
+    const { formato, tipo, ciclo, profesor } = req.query;
+
+    const modelos = {
+      avance: Avance,
+      evidencia: Evidencia,
+      planeacion: Planeacion,
+      profesor: Avance 
+    };
+
+    const Modelo = modelos[tipo];
+    if (!Modelo) {
+      return res.status(400).json({ message: 'Tipo de reporte inválido.' });
     }
 
-    res.status(400).json({ message: 'Formato no soportado. Use "excel" o "pdf"' });
+    // ? Filtros dinámicos
+    const filtro = {};
+    if (ciclo) filtro.cicloEscolar = ciclo;
+    if (profesor) filtro.profesor = profesor;
+
+    const data = await Modelo.find(filtro).lean();
+
+    // ? Exportar a Excel
+    if (formato === 'excel') {
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet(`Reporte ${tipo}`);
+
+      // Título principal
+      sheet.mergeCells('A1', 'E1');
+      const titleCell = sheet.getCell('A1');
+      titleCell.value = `Reporte de ${tipo.toUpperCase()} ${ciclo ? `(${ciclo})` : ''}`;
+      titleCell.font = { size: 16, bold: true };
+      titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+      sheet.addRow([]);
+
+      // Crear encabezados dinámicos
+      const sample = data.length ? data[0] : { mensaje: 'Sin registros disponibles' };
+      const columnas = Object.keys(sample).map(key => ({
+        header: key,
+        key,
+        width: 25
+      }));
+      sheet.columns = columnas;
+
+      // Agregar filas
+      if (data.length) {
+        data.forEach(item => sheet.addRow(item));
+      } else {
+        sheet.addRow({ mensaje: 'No hay datos para mostrar en este reporte.' });
+      }
+
+      // Estilo encabezados
+      sheet.getRow(3).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      sheet.getRow(3).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF2F5597' }
+      };
+
+      // ? Enviar archivo
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename=reporte-${tipo}-${ciclo || 'general'}.xlsx`);
+
+      await workbook.xlsx.write(res);
+      res.end();
+      return;
+    }
+
+    // ? Exportar a PDF
+    if (formato === 'pdf') {
+      const doc = new PDFDocument({ margin: 40, size: 'A4' });
+      const passthrough = new stream.PassThrough();
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename=reporte-${tipo}-${ciclo || 'general'}.pdf`);
+
+      doc.pipe(passthrough);
+      passthrough.pipe(res);
+
+      // Encabezado institucional
+      doc
+        .fontSize(18)
+        .text('Instituto Tecnológico Superior', { align: 'center', bold: true })
+        .moveDown(0.5);
+      doc
+        .fontSize(14)
+        .text(`Reporte de ${tipo.toUpperCase()} ${ciclo ? `(${ciclo})` : ''}`, { align: 'center' })
+        .moveDown(1);
+
+      if (data.length) {
+        // Renderizar registros
+        data.forEach((item, index) => {
+          doc
+            .fontSize(12)
+            .fillColor('#2F5597')
+            .text(`Registro ${index + 1}`, { underline: true });
+          doc.moveDown(0.5);
+
+          doc.fillColor('black');
+          Object.entries(item).forEach(([key, value]) => {
+            doc.text(`${key}: ${value ?? ''}`);
+          });
+          doc.moveDown();
+        });
+      } else {
+        // Reporte vacío profesional
+        doc.moveDown(3);
+        doc.fontSize(13).fillColor('gray')
+          .text('No existen registros disponibles para los criterios seleccionados.', {
+            align: 'center',
+            italic: true
+          });
+      }
+
+      // Pie de página
+      doc.moveDown(3);
+      doc
+        .fontSize(10)
+        .fillColor('gray')
+        .text('Generado automáticamente por el sistema de reportes.', {
+          align: 'center'
+        });
+
+      doc.end();
+      return;
+    }
+
+    res.status(400).json({ message: 'Formato no soportado. Use "excel" o "pdf".' });
   } catch (error) {
+    console.error('Error en exportarReporte:', error);
     res.status(500).json({ message: error.message });
   }
 };

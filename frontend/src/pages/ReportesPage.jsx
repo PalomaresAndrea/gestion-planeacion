@@ -18,7 +18,6 @@ const ReportesPage = () => {
   // Verificar permisos al cargar el componente
   useEffect(() => {
     if (!isCoordinador() && !isAdmin()) {
-      // No hacer nada, el componente mostrará el mensaje de no autorizado
       return
     }
 
@@ -35,14 +34,14 @@ const ReportesPage = () => {
           <div className="unauthorized-icon">🚫</div>
           <h1>Acceso No Autorizado</h1>
           <p>
-            No tienes permisos para acceder a los reportes institucionales. 
+            No tienes permisos para acceder a los reportes institucionales.
             Esta sección está disponible solo para coordinadores y administradores.
           </p>
           <div className="unauthorized-info">
             <p><strong>Tu rol actual:</strong> {user?.rol || 'Usuario'}</p>
             <p><strong>Roles permitidos:</strong> Coordinador, Administrador</p>
           </div>
-          <button 
+          <button
             className="btn-primary"
             onClick={() => window.history.back()}
           >
@@ -84,22 +83,55 @@ const ReportesPage = () => {
 
   const handleExport = async (formato, tipo) => {
     try {
+      // ? Llamada al backend esperando archivo binario
       const response = await reporteService.exportar(
-        formato, 
-        tipo, 
-        filters.ciclo, 
-        tipo === 'profesor' ? filters.profesor : undefined
-      )
-      
-      if (response.data.message) {
-        alert(response.data.message)
-      } else {
-        alert(`Funcionalidad de exportación ${formato.toUpperCase()} en desarrollo`)
+        formato,
+        tipo,
+        filters.ciclo,
+        tipo === 'profesor' ? filters.profesor : undefined,
+        { responseType: 'blob' } 
+      );
+
+      // ? Si el backend retorna JSON con error (404, sin datos, etc.)
+      if (response.data instanceof Blob && response.data.type === 'application/json') {
+        const text = await response.data.text();
+        const json = JSON.parse(text);
+        alert(json.message || 'No hay datos disponibles.');
+        return;
       }
+
+      // ? Crear nombre de archivo dinámico
+      const nombreArchivo = `reporte-${tipo}-${filters.ciclo || 'general'}.${formato === 'excel' ? 'xlsx' : 'pdf'}`;
+
+      // ? Crear enlace temporal para descarga
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', nombreArchivo);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
     } catch (error) {
-      alert('Error al exportar reporte')
+      console.error('Error al exportar reporte:', error);
+
+      // ? Si el backend respondió con JSON (sin registros o error controlado)
+      if (error.response && error.response.data) {
+        const blob = error.response.data;
+        try {
+          const text = await blob.text();
+          const json = JSON.parse(text);
+          alert(json.message || 'No hay registros para exportar.');
+          return;
+        } catch {
+          // no-op
+        }
+      }
+
+      alert('Error al exportar reporte.');
     }
-  }
+  };
 
   const renderMetricCard = (title, value, subtitle, color = '#3498db') => (
     <div className="metric-card">
@@ -116,9 +148,9 @@ const ReportesPage = () => {
         <span>{percentage}%</span>
       </div>
       <div className="progress-bar">
-        <div 
-          className="progress-fill" 
-          style={{ 
+        <div
+          className="progress-fill"
+          style={{
             width: `${percentage}%`,
             backgroundColor: color
           }}
@@ -132,8 +164,8 @@ const ReportesPage = () => {
       <header className="reportes-header">
         <h1>📊 Reportes Institucionales</h1>
         <p>
-          {isAdmin() 
-            ? 'Panel completo de análisis y estadísticas del sistema académico' 
+          {isAdmin()
+            ? 'Panel completo de análisis y estadísticas del sistema académico'
             : 'Análisis y estadísticas académicas - Vista de coordinador'
           }
         </p>
@@ -219,7 +251,7 @@ const ReportesPage = () => {
             <div className="header-info">
               <h2>🏫 Reporte Institucional</h2>
               <p>
-                Período: {reporteInstitucional.periodo} | 
+                Período: {reporteInstitucional.periodo} |
                 Generado: {new Date(reporteInstitucional.fechaGeneracion).toLocaleDateString()}
               </p>
             </div>
@@ -323,7 +355,7 @@ const ReportesPage = () => {
                   <span>{((reporteInstitucional.capacitacionDocente.cursosValidadas / reporteInstitucional.capacitacionDocente.totalCursos) * 100).toFixed(1)}%</span>
                 </div>
                 <div className="progress-bar">
-                  <div 
+                  <div
                     className="progress-fill"
                     style={{
                       width: `${(reporteInstitucional.capacitacionDocente.cursosValidadas / reporteInstitucional.capacitacionDocente.totalCursos) * 100}%`,
@@ -389,7 +421,7 @@ const ReportesPage = () => {
             <div className="header-info">
               <h2>👨‍🏫 Reporte del Profesor: {reporteProfesor.profesor}</h2>
               <p>
-                Período: {reporteProfesor.periodo} | 
+                Período: {reporteProfesor.periodo} |
                 Generado: {new Date(reporteProfesor.fechaGeneracion).toLocaleDateString()}
               </p>
             </div>

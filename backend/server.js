@@ -21,6 +21,9 @@ const app = express();
 // Inicializar servicio de email
 initEmailService();
 
+// 🔌 Middleware
+app.use(cors());
+app.use(express.json());
 // MIDDLEWARE DE LOGGING - NUEVO
 app.use((req, res, next) => {
   console.log('📨 Request:', req.method, req.url);
@@ -30,9 +33,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// 🔌 Middleware
-app.use(cors());
-app.use(express.json());
+
 
 // Documentación Swagger
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
