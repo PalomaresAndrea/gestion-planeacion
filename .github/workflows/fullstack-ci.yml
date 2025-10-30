@@ -1,0 +1,71 @@
+name: Fullstack CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  backend:
+    name: Backend - Node CI
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v3
+
+      - name: Configurar Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+          cache: "npm"
+
+      - name: Instalar dependencias
+        run: npm install
+
+      - name: Ejecutar tests (si tienes)
+        run: npm test --if-present
+
+      - name: Analizar lint (si usas)
+        run: npm run lint --if-present
+
+      - name: Crear carpeta build backend
+        run: mkdir -p ../build/backend && cp -R . ../build/backend
+
+      - name: Guardar artefacto backend
+        uses: actions/upload-artifact@v3
+        with:
+          name: backend-build
+          path: build/backend
+
+  frontend:
+    name: Frontend - React CI
+    runs-on: ubuntu-latest
+    needs: backend
+    defaults:
+      run:
+        working-directory: ./frontend
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v3
+
+      - name: Configurar Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+          cache: "npm"
+
+      - name: Instalar dependencias
+        run: npm install
+
+      - name: Build Vite
+        run: npm run build
+
+      - name: Guardar artefacto frontend
+        uses: actions/upload-artifact@v3
+        with:
+          name: frontend-build
+          path: dist
