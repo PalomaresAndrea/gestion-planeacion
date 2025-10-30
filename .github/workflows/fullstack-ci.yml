@@ -22,7 +22,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "18"
-          cache: "none"
 
       - name: Instalar dependencias del backend
         run: npm install
@@ -59,7 +58,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "18"
-          cache: "npm"
 
       - name: Instalar dependencias del frontend
         run: npm install
