@@ -1,1 +1,51 @@
-"# Proyecto Gesti y Planeaci Acad俶ica" 
+# Gesti贸n de Planeaci贸n Acad茅mica
+
+## Objetivo
+El alumnado optimizar谩 el proceso, desarrollo y liberaci贸n de componentes de software mediante la integraci贸n de metodolog铆as, modelos, herramientas y servicios para la implementaci贸n de aplicaciones 
+
+## Descripci贸n
+Aplicaci贸n web para instituciones educativas de nivel media superior, que permite:  
+- Dar seguimiento al cumplimiento de la planeaci贸n did谩ctica de los docentes.  
+- Controlar avances en cada parcial.  
+- Registrar evidencias de capacitaci贸n docente durante el periodo acad茅mico.
+
+## Funcionalidades Principales
+
+| Funcionalidad | Descripci贸n |
+|---------------|------------|
+| **Gesti贸n de Planeaci贸n Did谩ctica** | Registro de planeaciones por materia y parcial, revisi贸n y aprobaci贸n por coordinadores, historial de ciclos anteriores. |
+| **Control de Avances por Parcial** | Registro de avances por parcial, indicador de cumplimiento, reportes visuales por profesor, materia y parcial. |
+| **Evidencias de Curso y Capacitaci贸n** | Adjuntar PDF, im谩genes o constancias de cursos, validaci贸n por coordinaci贸n acad茅mica, campos de informaci贸n detallada. |
+| **Reportes y Seguimiento Institucional** | Reportes globales de cumplimiento de planeaciones, avances por parcial, cursos acreditados; exportaci贸n en PDF o Excel. |
+
+
+## Tecnolog铆as
+| Tipo | Herramientas |
+|------|-------------|
+| Frontend | React |
+| Backend | Node.js, Express |
+| Base de datos | MongoDB |
+| Seguridad | JWT, OAuth2, HTTPS |
+| Contenedores | Docker |
+| Versionamiento | Git, GitHub |
+| APIs de terceros | Correo Electronico (recordatorios) |
+
+## Instalaci贸n
+
+### Backend
+```bash
+git clone <URL_DEL_REPOSITORIO>
+cd backend
+npm install
+nom run dev
+Configurar .env
+### FrontEnd
+cd frontend
+npm install
+npm run dev
+
+##Equipo
+| Nombre           | Rol                |
+| ---------------- | ------------------ |
+| Andrea Palomares | Frontend & Backend |
+| Manuel           | Frontend & Backend |
