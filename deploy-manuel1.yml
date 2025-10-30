@@ -1,0 +1,9 @@
+name: CI Manuel1 - Backend & Frontend Build
+on:
+  push:
+    branches:
+      - Manuel1
+  pull_request:
+    branches:
+      - Manuel1
+...
