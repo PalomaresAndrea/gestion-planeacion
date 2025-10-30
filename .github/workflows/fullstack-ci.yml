@@ -65,5 +65,10 @@ jobs:
         run: npm install
 
       - name: Build de producción Vite
-  run: npm run build
+        run: npm run build
 
+      - name: Guardar artefacto frontend
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: dist
