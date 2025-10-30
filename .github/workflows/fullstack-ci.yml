@@ -65,4 +65,5 @@ jobs:
         run: npm install
 
       - name: Build de producción Vite
-        ru
+  run: npm run build
+
