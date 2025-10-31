@@ -102,15 +102,19 @@ export const evidenciaService = {
 
 // Servicios para Reportes
 export const reporteService = {
-  getInstitucional: (ciclo) => 
+  getInstitucional: (ciclo) =>
     api.get('/reportes/institucional', { params: { ciclo } }),
-  getPorProfesor: (profesor, ciclo) => 
+
+  getPorProfesor: (profesor, ciclo) =>
     api.get('/reportes/profesor', { params: { profesor, ciclo } }),
-  exportar: (formato, tipo, ciclo, profesor) => 
-    api.get('/reportes/exportar', { 
-      params: { formato, tipo, ciclo, profesor }
+
+  exportar: (params) =>
+    api.get('/reportes/exportar', {
+      params,
+      responseType: 'blob',
     }),
-}
+};
+
 
 // Servicios para Notificaciones
 export const notificacionService = {

@@ -53,16 +53,24 @@ const ReportesPage = () => {
   }
 
   const loadReporteInstitucional = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const response = await reporteService.getInstitucional(filters.ciclo)
-      setReporteInstitucional(response.data)
+      setReporteInstitucional(null);
+
+      const response = await reporteService.getInstitucional(filters.ciclo);
+
+      if (response?.data) {
+        setReporteInstitucional(response.data);
+      } else {
+        console.warn('⚠️ Respuesta vacía del backend');
+      }
     } catch (error) {
-      console.error('Error cargando reporte institucional:', error)
+      console.error('❌ Error cargando reporte institucional:', error);
+      alert('Ocurrió un error al cargar el reporte institucional.');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const loadReporteProfesor = async () => {
     if (!filters.profesor) {
@@ -81,57 +89,57 @@ const ReportesPage = () => {
     }
   }
 
-  const handleExport = async (formato, tipo) => {
-    try {
-      // ? Llamada al backend esperando archivo binario
-      const response = await reporteService.exportar(
-        formato,
-        tipo,
-        filters.ciclo,
-        tipo === 'profesor' ? filters.profesor : undefined,
-        { responseType: 'blob' } 
-      );
+const handleExport = async (formato, tipo) => {
+  try {
+    if (!formato) return; // No exportar si no se selecciona formato
 
-      // ? Si el backend retorna JSON con error (404, sin datos, etc.)
-      if (response.data instanceof Blob && response.data.type === 'application/json') {
-        const text = await response.data.text();
-        const json = JSON.parse(text);
-        alert(json.message || 'No hay datos disponibles.');
-        return;
-      }
+    const tipoNormalizado = tipo.toLowerCase().trim();
+    const mapaTipos = {
+      avances: 'avance',
+      evidencias: 'evidencia',
+      planeaciones: 'planeacion',
+      profesor: 'profesor'
+    };
+    const tipoFinal = mapaTipos[tipoNormalizado] || tipoNormalizado;
 
-      // ? Crear nombre de archivo dinámico
-      const nombreArchivo = `reporte-${tipo}-${filters.ciclo || 'general'}.${formato === 'excel' ? 'xlsx' : 'pdf'}`;
-
-      // ? Crear enlace temporal para descarga
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', nombreArchivo);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-
-    } catch (error) {
-      console.error('Error al exportar reporte:', error);
-
-      // ? Si el backend respondió con JSON (sin registros o error controlado)
-      if (error.response && error.response.data) {
-        const blob = error.response.data;
-        try {
-          const text = await blob.text();
-          const json = JSON.parse(text);
-          alert(json.message || 'No hay registros para exportar.');
-          return;
-        } catch {
-          // no-op
-        }
-      }
-
-      alert('Error al exportar reporte.');
+    if (tipoFinal === 'profesor' && !filters.profesor) {
+      alert('Por favor ingresa el nombre del profesor antes de exportar.');
+      return;
     }
-  };
+
+    // Construir parámetros solo si tienen valor
+    const params = { tipo: tipoFinal, formato };
+    if (filters.ciclo) params.ciclo = filters.ciclo;
+    if (tipoFinal === 'profesor') params.profesor = filters.profesor;
+
+    const response = await reporteService.exportar(params);
+
+    // Si el backend devuelve un JSON (sin datos)
+    if (response.data instanceof Blob && response.data.type === 'application/json') {
+      const text = await response.data.text();
+      const json = JSON.parse(text);
+      alert(json.message || 'No hay datos disponibles.');
+      return;
+    }
+
+    // Descargar el archivo
+    const nombreArchivo = `reporte-${tipoFinal}-${filters.ciclo || 'general'}.${formato === 'excel' ? 'xlsx' : 'pdf'}`;
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', nombreArchivo);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+
+  } catch (error) {
+    console.error('Error al exportar reporte:', error);
+    alert('Error al exportar reporte.');
+  }
+};
+
+
 
   const renderMetricCard = (title, value, subtitle, color = '#3498db') => (
     <div className="metric-card">
