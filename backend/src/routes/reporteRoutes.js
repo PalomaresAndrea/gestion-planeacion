@@ -1,6 +1,6 @@
 import express from 'express';
 import {
-  obtenerReporteInstitucional,
+  obtenerReporteInstitucionalJSON,
   obtenerReportePorProfesor,
   exportarReporte
 } from '../controllers/reporteController.js';
@@ -49,7 +49,7 @@ router.use(autenticar);
  *                 capacitacionDocente:
  *                   type: object
  */
-router.get('/institucional', obtenerReporteInstitucional);
+router.get('/institucional', obtenerReporteInstitucionalJSON);
 
 /**
  * @swagger

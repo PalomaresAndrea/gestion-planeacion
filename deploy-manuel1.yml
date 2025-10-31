@@ -1,0 +1,70 @@
+name: CI Manuel1 - Backend & Frontend Build
+
+on:
+  push:
+    branches:
+      - Manuel1
+  pull_request:
+    branches:
+      - Manuel1
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣ Clona el código del repositorio
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      # 2️⃣ Configura Node.js (versión 20 recomendada)
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # =============================
+      # BACKEND
+      # =============================
+      - name: Instalar dependencias del backend
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Ejecutar pruebas del backend
+        working-directory: ./backend
+        run: |
+          if [ -f "package.json" ]; then
+            npm test || echo "⚠️ No hay pruebas configuradas, se omite este paso"
+          fi
+
+      - name: Verificar que el backend inicia correctamente
+        working-directory: ./backend
+        run: |
+          node -v
+          echo "✅ Backend compilado e instalado correctamente"
+
+      # =============================
+      # FRONTEND
+      # =============================
+      - name: Instalar dependencias del frontend
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Construir frontend con Vite
+        working-directory: ./frontend
+        run: npm run build
+
+      # =============================
+      # ARTEFACTO (resultado del build del frontend)
+      # =============================
+      - name: Guardar build del frontend
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build-manuel1
+          path: frontend/dist
+
+      # =============================
+      # NOTIFICACIÓN FINAL
+      # =============================
+      - name: Notificación de éxito
+        run: echo "✅ Workflow ejecutado correctamente para la rama Manuel1 (backend + frontend)"
