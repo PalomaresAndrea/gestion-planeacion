@@ -1,0 +1,24 @@
+name: Deploy Preview
+
+on:
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Instalar backend
+        run: cd backend && npm install
+
+      - name: Instalar frontend
+        run: cd frontend && npm install
+
+      - name: Simular build Docker
+        run: echo "docker build . --tag proyecto-demo:latest ✅"
+
+      - name: Simular deploy temporal
+        run: echo "Desplegando entorno demo... ✅"
