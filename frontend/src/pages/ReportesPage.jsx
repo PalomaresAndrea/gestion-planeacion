@@ -18,7 +18,6 @@ const ReportesPage = () => {
   // Verificar permisos al cargar el componente
   useEffect(() => {
     if (!isCoordinador() && !isAdmin()) {
-      // No hacer nada, el componente mostrará el mensaje de no autorizado
       return
     }
 
@@ -35,14 +34,14 @@ const ReportesPage = () => {
           <div className="unauthorized-icon">🚫</div>
           <h1>Acceso No Autorizado</h1>
           <p>
-            No tienes permisos para acceder a los reportes institucionales. 
+            No tienes permisos para acceder a los reportes institucionales.
             Esta sección está disponible solo para coordinadores y administradores.
           </p>
           <div className="unauthorized-info">
             <p><strong>Tu rol actual:</strong> {user?.rol || 'Usuario'}</p>
             <p><strong>Roles permitidos:</strong> Coordinador, Administrador</p>
           </div>
-          <button 
+          <button
             className="btn-primary"
             onClick={() => window.history.back()}
           >
@@ -54,16 +53,24 @@ const ReportesPage = () => {
   }
 
   const loadReporteInstitucional = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const response = await reporteService.getInstitucional(filters.ciclo)
-      setReporteInstitucional(response.data)
+      setReporteInstitucional(null);
+
+      const response = await reporteService.getInstitucional(filters.ciclo);
+
+      if (response?.data) {
+        setReporteInstitucional(response.data);
+      } else {
+        console.warn('⚠️ Respuesta vacía del backend');
+      }
     } catch (error) {
-      console.error('Error cargando reporte institucional:', error)
+      console.error('❌ Error cargando reporte institucional:', error);
+      alert('Ocurrió un error al cargar el reporte institucional.');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const loadReporteProfesor = async () => {
     if (!filters.profesor) {
@@ -82,24 +89,57 @@ const ReportesPage = () => {
     }
   }
 
-  const handleExport = async (formato, tipo) => {
-    try {
-      const response = await reporteService.exportar(
-        formato, 
-        tipo, 
-        filters.ciclo, 
-        tipo === 'profesor' ? filters.profesor : undefined
-      )
-      
-      if (response.data.message) {
-        alert(response.data.message)
-      } else {
-        alert(`Funcionalidad de exportación ${formato.toUpperCase()} en desarrollo`)
-      }
-    } catch (error) {
-      alert('Error al exportar reporte')
+const handleExport = async (formato, tipo) => {
+  try {
+    if (!formato) return; // No exportar si no se selecciona formato
+
+    const tipoNormalizado = tipo.toLowerCase().trim();
+    const mapaTipos = {
+      avances: 'avance',
+      evidencias: 'evidencia',
+      planeaciones: 'planeacion',
+      profesor: 'profesor'
+    };
+    const tipoFinal = mapaTipos[tipoNormalizado] || tipoNormalizado;
+
+    if (tipoFinal === 'profesor' && !filters.profesor) {
+      alert('Por favor ingresa el nombre del profesor antes de exportar.');
+      return;
     }
+
+    // Construir parámetros solo si tienen valor
+    const params = { tipo: tipoFinal, formato };
+    if (filters.ciclo) params.ciclo = filters.ciclo;
+    if (tipoFinal === 'profesor') params.profesor = filters.profesor;
+
+    const response = await reporteService.exportar(params);
+
+    // Si el backend devuelve un JSON (sin datos)
+    if (response.data instanceof Blob && response.data.type === 'application/json') {
+      const text = await response.data.text();
+      const json = JSON.parse(text);
+      alert(json.message || 'No hay datos disponibles.');
+      return;
+    }
+
+    // Descargar el archivo
+    const nombreArchivo = `reporte-${tipoFinal}-${filters.ciclo || 'general'}.${formato === 'excel' ? 'xlsx' : 'pdf'}`;
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', nombreArchivo);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+
+  } catch (error) {
+    console.error('Error al exportar reporte:', error);
+    alert('Error al exportar reporte.');
   }
+};
+
+
 
   const renderMetricCard = (title, value, subtitle, color = '#3498db') => (
     <div className="metric-card">
@@ -116,9 +156,9 @@ const ReportesPage = () => {
         <span>{percentage}%</span>
       </div>
       <div className="progress-bar">
-        <div 
-          className="progress-fill" 
-          style={{ 
+        <div
+          className="progress-fill"
+          style={{
             width: `${percentage}%`,
             backgroundColor: color
           }}
@@ -132,8 +172,8 @@ const ReportesPage = () => {
       <header className="reportes-header">
         <h1>📊 Reportes Institucionales</h1>
         <p>
-          {isAdmin() 
-            ? 'Panel completo de análisis y estadísticas del sistema académico' 
+          {isAdmin()
+            ? 'Panel completo de análisis y estadísticas del sistema académico'
             : 'Análisis y estadísticas académicas - Vista de coordinador'
           }
         </p>
@@ -219,7 +259,7 @@ const ReportesPage = () => {
             <div className="header-info">
               <h2>🏫 Reporte Institucional</h2>
               <p>
-                Período: {reporteInstitucional.periodo} | 
+                Período: {reporteInstitucional.periodo} |
                 Generado: {new Date(reporteInstitucional.fechaGeneracion).toLocaleDateString()}
               </p>
             </div>
@@ -323,7 +363,7 @@ const ReportesPage = () => {
                   <span>{((reporteInstitucional.capacitacionDocente.cursosValidadas / reporteInstitucional.capacitacionDocente.totalCursos) * 100).toFixed(1)}%</span>
                 </div>
                 <div className="progress-bar">
-                  <div 
+                  <div
                     className="progress-fill"
                     style={{
                       width: `${(reporteInstitucional.capacitacionDocente.cursosValidadas / reporteInstitucional.capacitacionDocente.totalCursos) * 100}%`,
@@ -389,7 +429,7 @@ const ReportesPage = () => {
             <div className="header-info">
               <h2>👨‍🏫 Reporte del Profesor: {reporteProfesor.profesor}</h2>
               <p>
-                Período: {reporteProfesor.periodo} | 
+                Período: {reporteProfesor.periodo} |
                 Generado: {new Date(reporteProfesor.fechaGeneracion).toLocaleDateString()}
               </p>
             </div>
