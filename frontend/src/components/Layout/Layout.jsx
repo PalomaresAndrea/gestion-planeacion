@@ -8,10 +8,10 @@ import {
   ClipboardList,
   Menu,
   X,
-  User,
   LogOut,
   Settings,
   Users,
+  MapPin, // ✅ Ícono mapa agregado
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import "./LayoutStyles.css";
@@ -21,7 +21,7 @@ const Layout = ({ children }) => {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  
+
   const { user, logout, isCoordinador, isAdmin } = useAuth();
 
   const navItems = [
@@ -31,12 +31,19 @@ const Layout = ({ children }) => {
     { path: "/evidencias", label: "Evidencias", icon: <Folder size={18} /> },
   ];
 
+  // ✅ Geolocalización visible para todos
+  navItems.push({
+    path: "/geolocalizacion",
+    label: "Geolocalización",
+    icon: <MapPin size={18} />,
+  });
+
   // Solo coordinadores y admin pueden ver reportes
   if (isCoordinador() || isAdmin()) {
     navItems.push({
-      path: "/reportes", 
-      label: "Reportes", 
-      icon: <ClipboardList size={18} />
+      path: "/reportes",
+      label: "Reportes",
+      icon: <ClipboardList size={18} />,
     });
   }
 
@@ -45,7 +52,7 @@ const Layout = ({ children }) => {
     navItems.push({
       path: "/usuarios",
       label: "Gestión de Usuarios",
-      icon: <Users size={18} />
+      icon: <Users size={18} />,
     });
   }
 
@@ -55,20 +62,24 @@ const Layout = ({ children }) => {
   };
 
   const getUserRoleText = () => {
-    switch(user?.rol) {
-      case 'admin': return 'Administrador';
-      case 'coordinador': return 'Coordinador';
-      case 'profesor': return 'Profesor';
-      default: return 'Usuario';
+    switch (user?.rol) {
+      case "admin":
+        return "Administrador";
+      case "coordinador":
+        return "Coordinador";
+      case "profesor":
+        return "Profesor";
+      default:
+        return "Usuario";
     }
   };
 
   const getUserInitials = () => {
-    if (!user?.nombre) return 'U';
+    if (!user?.nombre) return "U";
     return user.nombre
-      .split(' ')
-      .map(word => word[0])
-      .join('')
+      .split(" ")
+      .map((word) => word[0])
+      .join("")
       .toUpperCase()
       .substring(0, 2);
   };
@@ -105,21 +116,19 @@ const Layout = ({ children }) => {
 
         {sidebarOpen && user && (
           <div className="sidebar-footer">
-            <div className="user-avatar">
-              {getUserInitials()}
-            </div>
+            <div className="user-avatar">{getUserInitials()}</div>
             <div className="user-info">
               <p className="user-name">{user.nombre || user.email}</p>
               <p className="user-role">{getUserRoleText()}</p>
             </div>
             <div className="user-menu-container">
-              <button 
+              <button
                 className="user-menu-btn"
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
               >
                 <Settings size={16} />
               </button>
-              
+
               {userMenuOpen && (
                 <div className="user-menu-dropdown">
                   <div className="user-menu-header">
@@ -132,7 +141,7 @@ const Layout = ({ children }) => {
                     </div>
                   </div>
                   <div className="user-menu-divider"></div>
-                  <button 
+                  <button
                     className="user-menu-item logout-btn"
                     onClick={handleLogout}
                   >
@@ -146,9 +155,8 @@ const Layout = ({ children }) => {
         )}
       </aside>
 
-      {/* Main content */}
+      {/* Main */}
       <main className="main-modern">
-        {/* Header móvil */}
         <div className="mobile-header">
           <button
             className="mobile-menu-btn"
@@ -158,21 +166,17 @@ const Layout = ({ children }) => {
           </button>
           <div className="mobile-user-info">
             <span>{user?.nombre || user?.email}</span>
-            <button 
-              className="mobile-logout-btn"
-              onClick={handleLogout}
-            >
+            <button className="mobile-logout-btn" onClick={handleLogout}>
               <LogOut size={16} />
             </button>
           </div>
         </div>
-        
+
         {children}
       </main>
 
-      {/* Overlay para móvil */}
       {sidebarOpen && (
-        <div 
+        <div
           className="sidebar-overlay"
           onClick={() => setSidebarOpen(false)}
         />

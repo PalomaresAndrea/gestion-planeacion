@@ -33,7 +33,7 @@ const avanceSchema = new mongoose.Schema({
   },
   porcentajeAvance: {
     type: Number,
-    default: 0, // Cambiado de required a default: 0
+    default: 0,
     min: 0,
     max: 100
   },
@@ -61,19 +61,55 @@ const avanceSchema = new mongoose.Schema({
   fechaActualizacion: {
     type: Date,
     default: Date.now
+  },
+
+  // NUEVOS CAMPOS PARA APROBACIÓN
+  estadoAprobacion: {
+    type: String,
+    enum: ['pendiente', 'aprobado', 'rechazado'],
+    default: 'pendiente'
+  },
+  aprobado: {
+    type: Boolean,
+    default: false
+  },
+  comentariosAprobacion: {
+    type: String,
+    default: ''
+  },
+  revisadoPor: {
+    type: String,
+    default: ''
+  },
+  fechaRevision: {
+    type: Date,
+    default: null
+  },
+  usuario_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Usuario'
   }
 }, { timestamps: true });
 
-// Método para calcular porcentaje automáticamente
+// Método para calcular el porcentaje automáticamente
 avanceSchema.methods.calcularPorcentaje = function() {
   if (this.temasPlaneados.length === 0) return 0;
   const porcentaje = Math.round((this.temasCubiertos.length / this.temasPlaneados.length) * 100);
-  return Math.min(100, Math.max(0, porcentaje)); // Asegurar que esté entre 0-100
+  return Math.min(100, Math.max(0, porcentaje));
 };
 
-// Middleware para actualizar porcentaje antes de guardar
+// Método para determinar el cumplimiento
+avanceSchema.methods.determinarCumplimiento = function() {
+  const porcentaje = this.porcentajeAvance;
+  if (porcentaje >= 90) return 'cumplido';
+  if (porcentaje >= 60) return 'parcial';
+  return 'no cumplido';
+};
+
+// Middleware: antes de guardar, actualiza porcentaje y cumplimiento
 avanceSchema.pre('save', function(next) {
   this.porcentajeAvance = this.calcularPorcentaje();
+  this.cumplimiento = this.determinarCumplimiento();
   this.fechaActualizacion = new Date();
   next();
 });

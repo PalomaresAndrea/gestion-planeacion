@@ -8,7 +8,8 @@ import {
   obtenerEstadisticasProfesor,
   obtenerReporteGeneral,
   obtenerDatosGraficas,
-  enviarRecordatorios
+  enviarRecordatorios,
+  aprobarEvidencia // 👈 NUEVA IMPORTACIÓN
 } from '../controllers/avanceController.js';
 import { autenticar } from '../middlewares/auth.js';
 
@@ -45,6 +46,10 @@ router.use(autenticar);
  *           type: number
  *       - in: query
  *         name: cumplimiento
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: estadoAprobacion
  *         schema:
  *           type: string
  *       - in: query
@@ -175,20 +180,43 @@ router.post('/', crearAvance);
  */
 router.post('/recordatorios', enviarRecordatorios);
 
-// 🧪 RUTA DE PRUEBA
-router.post('/test', async (req, res) => {
-  try {
-    console.log('🧪 TEST endpoint llamado con:', req.body);
-    res.json({ 
-      message: '✅ Test exitoso', 
-      dataReceived: req.body,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('❌ Test error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
+/**
+ * @swagger
+ * /api/avances/{id}/aprobar:
+ *   put:
+ *     summary: Aprobar o rechazar evidencia de avance
+ *     tags: [Avances]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - aprobado
+ *             properties:
+ *               aprobado:
+ *                 type: boolean
+ *                 description: true para aprobar, false para rechazar
+ *               comentarios:
+ *                 type: string
+ *                 description: Comentarios de la revisión
+ *               revisadoPor:
+ *                 type: string
+ *                 description: Nombre del coordinador que revisa
+ *     responses:
+ *       200:
+ *         description: Evidencia aprobada/rechazada exitosamente
+ *       404:
+ *         description: Avance no encontrado
+ */
+router.put('/:id/aprobar', aprobarEvidencia); // 👈 NUEVA RUTA
 
 /**
  * @swagger

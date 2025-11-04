@@ -1,6 +1,8 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 
+//antes de ser guardado mongo intercepta ese guardado en una funcion llamada pre save y 
+// agrega una cadena de datos aleatoria, en bcrypts.genSalt  
 const usuarioSchema = new mongoose.Schema({
   email: {
     type: String,
@@ -41,8 +43,8 @@ usuarioSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
   
   try {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
+    const salt = await bcrypt.genSalt(10);  //entre más alto más seguro pero lento 
+    this.password = await bcrypt.hash(this.password, salt); //aquí se hashe la contraseña tipo "huella digital"
     next();
   } catch (error) {
     next(error);
